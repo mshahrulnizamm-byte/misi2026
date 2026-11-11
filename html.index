@@ -1,1724 +1,1691 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Trophy, Flame, Droplet, Dumbbell, Calendar, Heart, 
-  TrendingDown, CheckCircle2, Circle, Award, RefreshCw, 
-  Download, Plus, Trash2, Edit3, ChevronRight, User, 
-  Sparkles, Scale, Activity, Apple, ChevronDown, Check, Utensils
-} from 'lucide-react';
-import { 
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, Legend 
-} from 'recharts';
-
-// --- INITIAL DATA STRUCTURES ---
-const INITIAL_PROFILES = {
-  wife: {
-    name: "Isteri",
-    initialWeight: 115,
-    height: 165,
-    firstTarget: 109,
-    finalTarget: 95,
-    currentWeight: 115,
-    points: 0,
-    avatar: "👩‍🍳",
-    colorTheme: {
-      bg: "bg-pink-50",
-      border: "border-pink-200",
-      text: "text-pink-600",
-      badgeBg: "bg-pink-100",
-      badgeText: "text-pink-700",
-      btn: "bg-pink-500 hover:bg-pink-600 text-white",
-      progress: "from-pink-400 to-rose-500"
-    }
-  },
-  husband: {
-    name: "Suami",
-    initialWeight: 80,
-    height: 159,
-    firstTarget: 76,
-    finalTarget: 70,
-    currentWeight: 80,
-    points: 0,
-    avatar: "👨‍💻",
-    colorTheme: {
-      bg: "bg-blue-50",
-      border: "border-blue-200",
-      text: "text-blue-600",
-      badgeBg: "bg-blue-100",
-      badgeText: "text-blue-700",
-      btn: "bg-blue-500 hover:bg-blue-600 text-white",
-      progress: "from-blue-400 to-indigo-600"
-    }
-  },
-  startDate: new Date().toISOString().split('T')[0]
-};
-
-// Menu Cadangan Harian dengan Berat Makanan Spesifik (Gram)
-const DAILY_MEAL_PLANS = [
-  {
-    dayName: "Isnin",
-    title: "Detox High Protein Kickstart",
-    breakfast: {
-      menu: "Telur Rebus + Roti Perang + Avokado",
-      wifePortion: "2 biji Telur (100g) + 1 keping Roti Wholemeal (35g) + 30g Avokado",
-      husbandPortion: "3 biji Telur (150g) + 2 keping Roti Wholemeal (70g) + 50g Avokado"
-    },
-    lunch: {
-      menu: "Dada Ayam Panggang + Nasi Perang + Ulam/Salad",
-      wifePortion: "150g Dada Ayam + 100g Nasi Perang (Masak) + 150g Ulam Pegaga/Timun",
-      husbandPortion: "180g Dada Ayam + 130g Nasi Perang (Masak) + 150g Ulam Pegaga/Timun"
-    },
-    dinner: {
-      menu: "Sup Ikan Siakap + Sayur Broccoli Rebus",
-      wifePortion: "150g Isi Siakap + 150g Broccoli/Lobak + Sup Kosong (250ml)",
-      husbandPortion: "180g Isi Siakap + 180g Broccoli/Lobak + Sup Kosong (300ml)"
-    },
-    snack: {
-      menu: "Epal Hijau + Kacang Badam",
-      wifePortion: "1 biji Epal Hijau (120g) + 10 biji Badam (12g)",
-      husbandPortion: "1 biji Epal Hijau (150g) + 15 biji Badam (18g)"
-    }
-  },
-  {
-    dayName: "Selasa",
-    title: "Fiber & Lean Omega Day",
-    breakfast: {
-      menu: "Oatmeal Bersama Beri & Chia Seed",
-      wifePortion: "40g Rolled Oat + 150ml Susu Low Fat + 50g Blueberries + 5g Chia",
-      husbandPortion: "60g Rolled Oat + 200ml Susu Low Fat + 50g Blueberries + 10g Chia"
-    },
-    lunch: {
-      menu: "Ikan Salmon / Tenggiri Gril + Keledek Rebus + Bayam",
-      wifePortion: "140g Ikan Salmon + 100g Keledek Manis + 150g Bayam Tumis Air",
-      husbandPortion: "170g Ikan Salmon + 130g Keledek Manis + 150g Bayam Tumis Air"
-    },
-    dinner: {
-      menu: "Salad Ayam Grill & Minyak Zaitun",
-      wifePortion: "150g Dada Ayam + 200g Campuran Salad + 1 sudu teh Minyak Zaitun",
-      husbandPortion: "180g Dada Ayam + 200g Campuran Salad + 1.5 sudu teh Minyak Zaitun"
-    },
-    snack: {
-      menu: "Yogurt Yunani (Greek Yogurt) Tanpa Gula",
-      wifePortion: "120g Greek Yogurt",
-      husbandPortion: "170g Greek Yogurt"
-    }
-  },
-  {
-    dayName: "Rabu",
-    title: "Clean Local Flavors",
-    breakfast: {
-      menu: "Bihoon Goreng Sup Dada Ayam (Kurang Minyak)",
-      wifePortion: "80g Bihoon (Masak) + 80g Isi Ayam + Sawian (100g)",
-      husbandPortion: "120g Bihoon (Masak) + 100g Isi Ayam + Sawian (100g)"
-    },
-    lunch: {
-      menu: "Nasi Suku Suku Separuh (Ayam Kukus Halia)",
-      wifePortion: "150g Ayam Kukus + 100g Nasi Putih/Perang + 150g Timun/Kubis",
-      husbandPortion: "180g Ayam Kukus + 120g Nasi Putih/Perang + 150g Timun/Kubis"
-    },
-    dinner: {
-      menu: "Sup Daging Lean / Haruan & Sayur Sawit",
-      wifePortion: "130g Daging Tanpa Lemak + 150g Sawi Hijau + Sup Bawang",
-      husbandPortion: "160g Daging Tanpa Lemak + 150g Sawi Hijau + Sup Bawang"
-    },
-    snack: {
-      menu: "Buah Jambu Batu (Guava)",
-      wifePortion: "1/2 Biji Jambu Batu (150g)",
-      husbandPortion: "1 Biji Jambu Batu (250g)"
-    }
-  },
-  {
-    dayName: "Khamis",
-    title: "Low-Carb Fat Burn Boost",
-    breakfast: {
-      menu: "Omelet 3 Putih Telur + Cendawan & Bayam",
-      wifePortion: "3 Telur (Guna 1 Kuning, 3 Putih) + 50g Cendawan + 50g Bayam",
-      husbandPortion: "4 Telur (Guna 2 Kuning, 4 Putih) + 70g Cendawan + 70g Bayam"
-    },
-    lunch: {
-      menu: "Ikan Kembung Bakar Air-Fryer + Sambal Ulam",
-      wifePortion: "2 ekor Ikan Kembung (160g) + 90g Nasi Perang + 150g Ulam Raja",
-      husbandPortion: "2 ekor Ikan Kembung Besar (200g) + 120g Nasi Perang + 150g Ulam Raja"
-    },
-    dinner: {
-      menu: "Cauliflower Rice + Daging Cincang Stir-Fry",
-      wifePortion: "150g Cauliflower Rice + 120g Daging Lembu Lean Cincang",
-      husbandPortion: "180g Cauliflower Rice + 150g Daging Lembu Lean Cincang"
-    },
-    snack: {
-      menu: "Kacang Edamame Rebus",
-      wifePortion: "100g Edamame",
-      husbandPortion: "150g Edamame"
-    }
-  },
-  {
-    dayName: "Jumaat",
-    title: "Metabolic Reset & Sea Delight",
-    breakfast: {
-      menu: "Smoothie Protein Beri & Susu Badam",
-      wifePortion: "1 Scoop Protein/Susu Badam 250ml + 80g Beri + 1 sudu Chia",
-      husbandPortion: "1.5 Scoop Protein/Susu Badam 300ml + 100g Beri + 1 sudu Chia"
-    },
-    lunch: {
-      menu: "Udang Sambal Sihat (Kurang Garam/Gula) + Nasi Perang",
-      wifePortion: "140g Udang + 100g Nasi Perang + 150g Bendi Rebus",
-      husbandPortion: "180g Udang + 130g Nasi Perang + 150g Bendi Rebus"
-    },
-    dinner: {
-      menu: "Steak Dada Ayam Lemon Herb + Asparagus",
-      wifePortion: "160g Dada Ayam Gril + 100g Asparagus Panggang",
-      husbandPortion: "200g Dada Ayam Gril + 120g Asparagus Panggang"
-    },
-    snack: {
-      menu: "Buah Naga Merah (Pitaya)",
-      wifePortion: "150g Buah Naga",
-      husbandPortion: "200g Buah Naga"
-    }
-  },
-  {
-    dayName: "Sabtu",
-    title: "Weekend Active Fuel",
-    breakfast: {
-      menu: "Pancake Oat & Pisang (No Flour)",
-      wifePortion: "40g Oat + 1 Biji Pisang + 1 Telur (3 keping kecil)",
-      husbandPortion: "60g Oat + 1.5 Biji Pisang + 2 Telur (4 keping)"
-    },
-    lunch: {
-      menu: "Wrap Tortilla Wholemeal Ayam Crispy Airfryer",
-      wifePortion: "1 Keping Wrap Wholemeal + 130g Isi Ayam Airfryer + Salad",
-      husbandPortion: "2 Keping Wrap Wholemeal + 160g Isi Ayam Airfryer + Salad"
-    },
-    dinner: {
-      menu: "Sup Tomyam Bening Seafood (Tanpa Santan/Minyak)",
-      wifePortion: "150g Seafood (Udang/Sotong/Ikan) + 150g Cendawan/Cendawan Inoki",
-      husbandPortion: "180g Seafood (Udang/Sotong/Ikan) + 180g Cendawan/Cendawan Inoki"
-    },
-    snack: {
-      menu: "Potongan Betik Segar",
-      wifePortion: "150g Betik",
-      husbandPortion: "200g Betik"
-    }
-  },
-  {
-    dayName: "Ahad",
-    title: "Sunday Family Meal Prep Day",
-    breakfast: {
-      menu: "Telur Separuh Masak + Roti Bakar Wholemeal",
-      wifePortion: "2 Biji Telur + 1 Keping Roti Bakar (Tanpa Kaya/Mentega)",
-      husbandPortion: "3 Biji Telur + 2 Keping Roti Bakar (Tanpa Kaya/Mentega)"
-    },
-    lunch: {
-      menu: "Ayam Percik Sihat (Bakar Airfryer) + Nasi Perang",
-      wifePortion: "150g Ayam Bakar + 100g Nasi Perang + Ulam Timun",
-      husbandPortion: "180g Ayam Bakar + 130g Nasi Perang + Ulam Timun"
-    },
-    dinner: {
-      menu: "Sup Tofu & Cendawan Muka",
-      wifePortion: "150g Tofu Lembut + 100g Cendawan + Sup Sayur",
-      husbandPortion: "200g Tofu Lembut + 120g Cendawan + Sup Sayur"
-    },
-    snack: {
-      menu: "Kacang Walnut / Pistachio",
-      wifePortion: "15g Walnut",
-      husbandPortion: "25g Walnut"
-    }
-  }
-];
-
-const CHALLENGE_WEEKS = [
-  {
-    week: 1,
-    title: "Hydro & Kickstart Detox",
-    objective: "Membina habit minum air secukupnya & menyahtoksin badan bersama.",
-    description: "Fokus pada penghidratan 3 Liter air sehari dan mengurangkan minuman bersuhu manis.",
-    dailyTasks: [
-      "Minum 3.5 Liter Air Kosong",
-      "Elak Semua Minuman Bergula",
-      "Jalan Kaki 15 Minit Bersama",
-      "Tiada Snek Selepas Jam 8 Malam",
-      "Tidur Sekurang-kurangnya 7 Jam",
-      "Sediakan Bekal Sihat Bersama",
-      "Timbang Berat & Rekod Nota Minggu 1"
-    ],
-    tip: "Letakkan botol air 1.5L di atas meja kerja masing-masing sebagai peringatan fizikal."
-  },
-  {
-    week: 2,
-    title: "Potong Gula (Sugar Cut)",
-    objective: "Mengurangkan pengambilan gula tambahan dalam makanan dan minuman.",
-    description: "Minggu ini kita kurangkan karbohidrat ringkas dan manis.",
-    dailyTasks: [
-      "Minum Kopi/Teh Tanpa Gula",
-      "Gantikan Pencuci Mulut Dengan Buah Segar",
-      "Senaman Tabata 10 Minit Bersama",
-      "Makan Salad/Sayuran Hijau Setiap Waktu Makan",
-      "Elak Makanan Diproses (Fast Food)",
-      "Berjalan 6,000 Langkah Hari Ini",
-      "Tukar Nasi Putih Ke Nasi Perang / Suku Suku Separuh"
-    ],
-    tip: "Bila teringin manis, minum semangkuk air suam atau makan sepotong epal hijau."
-  },
-  {
-    week: 3,
-    title: "10,000 Langkah Pasangan",
-    objective: "Meningkatkan pembakaran kalori harian (NEAT) dengan berjalan.",
-    description: "Melakukan senaman impak rendah tetapi berkesan secara santai bersama.",
-    dailyTasks: [
-      "Mencapai 8,000 - 10,000 Langkah",
-      "Jalan Santai Malam 20 Minit Pusing Taman",
-      "Gunakan Tangga Berbanding Lif",
-      "Minum Air 3L",
-      "Porsi Makan Suku-Suku-Separuh",
-      "Stretching Bersama 10 Minit Sebelum Tidur",
-      "Refleksi & Semakan Langkah Seminggu"
-    ],
-    tip: "Jalan sambil bersembang atau mendengar podcast bersama untuk melupakan penat."
-  },
-  {
-    week: 4,
-    title: "Kawalan Porsi & Puasa Intermiten",
-    objective: "Melatih disiplin waktu makan dengan kaedah IF 14:10 atau 16:8.",
-    description: "Memberikan rehat pada sistem penghadaman dan membakar lemak degil.",
-    dailyTasks: [
-      "Berpuasa IF 14-16 Jam",
-      "Berbuka Puasa Dengan Protein & Sayur Dahulu",
-      "Minum Air Cukup Semasa Window Makan",
-      "Walk 30 Minit Sebelum Berbuka",
-      "Tiada Makanan Ringan / Crispy Snack",
-      "Makan Malam Sebelum Jam 7.30 Malam",
-      "Evaluasi Berat Badan Sebulan (Milestone 1 Check)"
-    ],
-    tip: "Semasa berpuasa, anda masih boleh minum air kosong, kopi o tanpa gula, atau teh hijau."
-  },
-  {
-    week: 5,
-    title: "Power Protein Week",
-    objective: "Meningkatkan jisim otot bersih untuk mempercepatkan metabolisme.",
-    description: "Mengutamakan makanan kaya protein seperti dada ayam, telur, dan ikan.",
-    dailyTasks: [
-      "Sediakan Protein minimum 20g-30g Setiap Hidangan",
-      "Senaman Kekuatan / Bodyweight Workout 20 Minit",
-      "Kurangkan Minyak Dalam Masakan (Airfryer / Kukus)",
-      "Minum 3.5L Air",
-      "Makan 2 Biji Telur Rebus Sebagai Snek",
-      "Jalan Kaki 7,000 Langkah",
-      "Perancangan Menu Protein Minggu Depan"
-    ],
-    tip: "Protein menjaga korang kenyang lebih lama dan mengurangkan 'craving' malam."
-  },
-  {
-    week: 6,
-    title: "Cabaran Tanpa Karbo Kompleks Malam",
-    objective: "Mengurangkan penumpuan glikogen malam untuk pembakaran lemak optimum.",
-    description: "Makan malam bertemakan sup, salad, atau protein panggang.",
-    dailyTasks: [
-      "Makan Malam Tanpa Nasi/Roti/Mie",
-      "Senaman Kardio (HIIT) 15 Minit",
-      "Minum Teh Hijau Unsweetened",
-      "Mencapai 8,000 Langkah",
-      "Tidur Sebelum Jam 11 Malam",
-      "Makan Buah Berserat Tinggi",
-      "Sediakan Meals Prep Bersama Suami/Isteri"
-    ],
-    tip: "Gantikan nasi dengan cauliflower rice atau salad besar bercampur dada ayam panggang."
-  },
-  {
-    week: 7,
-    title: "Pusingan Pertengahan (Halfway Sprint)",
-    objective: "Menyemarakkan semula semangat separuh perjalanan cabaran!",
-    description: "Variasi senaman baru dan komitmen tahap maksimum.",
-    dailyTasks: [
-      "Workout Pasangan (Couple Pushups & Planks)",
-      "Minum 3.5L Air Kosong",
-      "Gula Tambahan ZERO",
-      "Jalan Kaki 10,000 Langkah",
-      "Makan 3 Hidangan Sayur-sayuran",
-      "Sesi Urutan / Relaxation Pasangan",
-      "Semakan Gambar Progress Pertengahan (Week 7 Photo)"
-    ],
-    tip: "Ambil gambar progress bersama! Perubahan badan fizikal lebih jelas daripada angka timbang."
-  },
-  {
-    week: 8,
-    title: "Kardio & Ketahanan (Endurance Boost)",
-    objective: "Meningkatkan stamina jantung dan paru-paru.",
-    description: "Gabungan senaman kardio ringan dan brisk walking berturut-turut.",
-    dailyTasks: [
-      "Brisk Walk / Jogging 30 Minit",
-      "Stretching Penuh Badan 15 Minit",
-      "Kawalan Garam & Makanan Masin",
-      "Minum Air 3L",
-      "Tidur Awal (8 Jam)",
-      "Makan Nasi Suku Porsi Sahaja",
-      "Refleksi Tahap Tenaga & Stamina"
-    ],
-    tip: "Kurangkan garam untuk mengelakkan takungan air (water retention) dalam badan."
-  },
-  {
-    week: 9,
-    title: "Clean Eating & Whole Foods",
-    objective: "Membersihkan usus dengan makanan asli tanpa pengawet.",
-    description: "Hanya makan makanan semula jadi (real food) sepanjang minggu.",
-    dailyTasks: [
-      "Semua Makanan Dimasak Sendiri (Homecooked)",
-      "Tiada Sos Bergula / Kiub Perasa Tiruan",
-      "Minum Jus Hijau / Smoothies Tanpa Gula",
-      "Jalan 8,000 Langkah",
-      "Senaman Rintangan / Resistance Band",
-      "Minum Air 3.5L",
-      "Persediaan Mental Untuk Fasa Akhir 30 Hari"
-    ],
-    tip: "Gunakan rempah ratus semula jadi seperti kunyit, lada hitam, dan serbuk bawang putih untuk rasa yang sedap."
-  },
-  {
-    week: 10,
-    title: "Core & Flexibility (Kekuatan Teras)",
-    objective: "Menguatkan otot perut, pinggang dan fleksibiliti badan.",
-    description: "Sesi Pilates / Core Workout ringan untuk posture badan yang anggun & tegap.",
-    dailyTasks: [
-      "Plank Challenge (Hold 45-60 Saat x 3 Set)",
-      "Senaman Abdominal / Pilates Pasangan 20 Minit",
-      "Minum Air 3L",
-      "Tiada Snek Tinggi Kalori",
-      "Makan Protein Cukup",
-      "Jalan Kaki 9,000 Langkah",
-      "Refleksi Pinggang & Perubahan Ukuran Lilitan"
-    ],
-    tip: "Kekuatan teras (core) mengurangkan sakit belakang dan memberikan bentuk badan lebih mantap."
-  },
-  {
-    week: 11,
-    title: "Pecutan Akhir (Final Burn)",
-    objective: "Maksimumkan penurunan berat badan sebelum minggu penutup.",
-    description: "Disiplin tahap tinggi dengan gabungan IF dan senaman harian.",
-    dailyTasks: [
-      "Berpuasa Intermiten 16 Jam",
-      "Workout 25 Minit Bersama",
-      "Langkah Harian 10,000",
-      "Minum Air 3.5L",
-      "Zero Junk Food / Zero Fast Food",
-      "Makan Malam Sup Protein & Sayur",
-      "Sokongan & Kata-Kata Semangat Pasangan"
-    ],
-    tip: "Saling memberi sokongan moral. Pasangan anda adalah kekuatan terbesar anda!"
-  },
-  {
-    week: 12,
-    title: "Kemenangan 90 Hari & Habit Abadi",
-    objective: "Meraikan kejayaan 90 hari dan menetapkan gaya hidup sihat berterusan.",
-    description: "Peringkat akhir penentu keputusan kejayaan transformer korang berdua!",
-    dailyTasks: [
-      "Timbang Berat Akhir Official 90 Hari",
-      "Ambil Gambar Progress Akhir Pasangan",
-      "Workout Santai Meraikan Kejayaan",
-      "Makan Malam Keraian Sihat (Healthy Celebration Meal)",
-      "Minum Air 3L",
-      "Senaraikan 5 Habit Baru Yang Akan Diteruskan",
-      "Cipta Matlamat Kesihatan Jangka Panjang Baru"
-    ],
-    tip: "Syabas! Ini bukan penamat, tetapi permulaan gaya hidup sihat untuk seumur hidup ❤️."
-  }
-];
-
-const INITIAL_BADGES = [
-  { id: 'start', title: 'Perjalanan Bermula', desc: 'Memulakan Cabaran 90 Hari', icon: '🚀', requirement: () => true },
-  { id: 'first_2kg', title: '2kg Pertama Terbakar', desc: 'Penurunan 2kg pertama', icon: '🔥', requirement: (p) => {
-    const wifeLost = p.wife.initialWeight - p.wife.currentWeight;
-    const husbLost = p.husband.initialWeight - p.husband.currentWeight;
-    return wifeLost >= 2 || husbLost >= 2;
-  }},
-  { id: 'water_master', title: 'Juara Hidrasi', desc: 'Mencapai 500+ Mata Hidrasi', icon: '💧', requirement: (p) => (p.wife.points + p.husband.points) >= 500 },
-  { id: 'halfway', title: 'Pahlawan Pertengahan', desc: 'Tiba di Minggu ke-6 Cabaran', icon: '🛡️', requirement: (p, history, week) => week >= 6 },
-  { id: 'target_met', title: 'Sasaran Dicapai!', desc: 'Berjaya mencapai sasaran berat pertama', icon: '👑', requirement: (p) => p.wife.currentWeight <= p.wife.firstTarget || p.husband.currentWeight <= p.husband.firstTarget },
-  { id: '1000_pts', title: 'Kelab 1,000 Mata', desc: 'Terkumpul 1,000 jumlah mata pasangan', icon: '⭐', requirement: (p) => (p.wife.points + p.husband.points) >= 1000 }
-];
-
-// Helper Functions
-const calculateBMI = (weight, heightCm) => {
-  if (!weight || !heightCm) return 0;
-  const heightM = heightCm / 100;
-  return (weight / (heightM * heightM)).toFixed(1);
-};
-
-const getBMICategory = (bmi) => {
-  if (bmi < 18.5) return { label: 'Kurang Berat', color: 'text-blue-500' };
-  if (bmi < 24.9) return { label: 'Ideal', color: 'text-emerald-600 font-bold' };
-  if (bmi < 29.9) return { label: 'Berlebihan Berat', color: 'text-amber-500' };
-  return { label: 'Obesiti', color: 'text-pink-600 font-bold' };
-};
-
-export default function App() {
-  // --- STATES ---
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [profiles, setProfiles] = useState(() => {
-    const saved = localStorage.getItem('90day_profiles_v2');
-    return saved ? JSON.parse(saved) : INITIAL_PROFILES;
-  });
-
-  const [currentWeekNum, setCurrentWeekNum] = useState(1);
-  const [selectedDayMealIdx, setSelectedDayMealIdx] = useState(0);
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>90 Days Couple Weight Loss Challenge</title>
   
-  // Weight Log History
-  const [weightLogs, setWeightLogs] = useState(() => {
-    const saved = localStorage.getItem('90day_weight_logs_v2');
-    return saved ? JSON.parse(saved) : [
-      { date: new Date().toISOString().split('T')[0], wifeWeight: 115, husbandWeight: 80, note: 'Timbangan Perdana (Hari 1)' }
-    ];
-  });
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & React DOM (Development Build for detailed error logging & stability) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Babel Compiler for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  // Daily Habits Log (Water, Meals, Exercise)
-  const [dailyHabits, setDailyHabits] = useState(() => {
-    const saved = localStorage.getItem('90day_daily_habits_v2');
-    const today = new Date().toISOString().split('T')[0];
-    return saved ? JSON.parse(saved) : {
-      date: today,
-      wifeWater: 4,
-      husbandWater: 5,
-      wifeCalories: 1500,
-      husbandCalories: 1750,
-      workoutDone: true,
-      workoutNotes: 'Brisk walk 25 minit di taman',
-      completedMeals: {}
-    };
-  });
-
-  // Checklist State
-  const [checklist, setChecklist] = useState(() => {
-    const saved = localStorage.getItem('90day_checklist_v2');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  // Reflections State
-  const [reflections, setReflections] = useState(() => {
-    const saved = localStorage.getItem('90day_reflections_v2');
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  // Form states for Weight Modal
-  const [newLog, setNewLog] = useState({
-    date: new Date().toISOString().split('T')[0],
-    wifeWeight: profiles.wife.currentWeight,
-    husbandWeight: profiles.husband.currentWeight,
-    note: ''
-  });
-
-  const [showEditTargetModal, setShowEditTargetModal] = useState(false);
-  const [editTargetData, setEditTargetData] = useState({
-    wifeFirst: profiles.wife.firstTarget,
-    wifeFinal: profiles.wife.finalTarget,
-    husbandFirst: profiles.husband.firstTarget,
-    husbandFinal: profiles.husband.finalTarget
-  });
-
-  const [showResetModal, setShowResetModal] = useState(false);
-
-  // --- LOCALSTORAGE PERSISTENCE ---
-  useEffect(() => {
-    localStorage.setItem('90day_profiles_v2', JSON.stringify(profiles));
-  }, [profiles]);
-
-  useEffect(() => {
-    localStorage.setItem('90day_weight_logs_v2', JSON.stringify(weightLogs));
-  }, [weightLogs]);
-
-  useEffect(() => {
-    localStorage.setItem('90day_daily_habits_v2', JSON.stringify(dailyHabits));
-  }, [dailyHabits]);
-
-  useEffect(() => {
-    localStorage.setItem('90day_checklist_v2', JSON.stringify(checklist));
-  }, [checklist]);
-
-  useEffect(() => {
-    localStorage.setItem('90day_reflections_v2', JSON.stringify(reflections));
-  }, [reflections]);
-
-  // Calculations for Days & Expected Daily Targets
-  const dayStats = useMemo(() => {
-    const start = new Date(profiles.startDate);
-    const today = new Date();
-    const diffTime = Math.abs(today - start);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const currentDay = Math.min(Math.max(diffDays, 1), 90);
-    const remainingDays = Math.max(90 - currentDay, 0);
-
-    // Pengiraan Berat Patut Turun Hari Ini secara linear (90 hari)
-    // Formula: Initial - ( (Initial - FinalTarget) * (currentDay / 90) )
-    const wifeTotalTargetDrop = profiles.wife.initialWeight - profiles.wife.firstTarget;
-    const husbandTotalTargetDrop = profiles.husband.initialWeight - profiles.husband.firstTarget;
-
-    const wifeExpectedWeightToday = (profiles.wife.initialWeight - (wifeTotalTargetDrop * (currentDay / 90))).toFixed(1);
-    const husbandExpectedWeightToday = (profiles.husband.initialWeight - (husbandTotalTargetDrop * (currentDay / 90))).toFixed(1);
-
-    // Dynamic Date display string
-    const currentDateStr = today.toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-    return { 
-      currentDay, 
-      remainingDays, 
-      currentDateStr,
-      wifeExpectedWeightToday: parseFloat(wifeExpectedWeightToday),
-      husbandExpectedWeightToday: parseFloat(husbandExpectedWeightToday)
-    };
-  }, [profiles.startDate, profiles.wife, profiles.husband]);
-
-  // Recalculate Points based on Checklist
-  const updatePoints = (newChecklist) => {
-    let wifePts = 0;
-    let husbPts = 0;
-    Object.keys(newChecklist).forEach(key => {
-      if (newChecklist[key]) {
-        if (key.endsWith('wife')) wifePts += 10;
-        if (key.endsWith('husband')) husbPts += 10;
-      }
-    });
-    setProfiles(prev => ({
-      ...prev,
-      wife: { ...prev.wife, points: wifePts },
-      husband: { ...prev.husband, points: husbPts }
-    }));
-  };
-
-  const handleTaskToggle = (weekNum, dayIdx, person) => {
-    const key = `week-${weekNum}-day-${dayIdx}-${person}`;
-    const updated = { ...checklist, [key]: !checklist[key] };
-    setChecklist(updated);
-    updatePoints(updated);
-  };
-
-  const handleMealToggle = (mealType) => {
-    const key = `day-${selectedDayMealIdx}-${mealType}`;
-    const updatedMeals = {
-      ...dailyHabits.completedMeals,
-      [key]: !dailyHabits.completedMeals?.[key]
-    };
-    setDailyHabits({ ...dailyHabits, completedMeals: updatedMeals });
-  };
-
-  const handleAddWeightLog = (e) => {
-    e.preventDefault();
-    const wVal = parseFloat(newLog.wifeWeight);
-    const hVal = parseFloat(newLog.husbandWeight);
-
-    if (isNaN(wVal) || isNaN(hVal)) return;
-
-    const updatedLogs = [...weightLogs, { ...newLog, wifeWeight: wVal, husbandWeight: hVal }];
-    updatedLogs.sort((a, b) => new Date(a.date) - new Date(b.date));
-    setWeightLogs(updatedLogs);
-
-    setProfiles(prev => ({
-      ...prev,
-      wife: { ...prev.wife, currentWeight: wVal },
-      husband: { ...prev.husband, currentWeight: hVal }
-    }));
-
-    setNewLog({
-      date: new Date().toISOString().split('T')[0],
-      wifeWeight: wVal,
-      husbandWeight: hVal,
-      note: ''
-    });
-  };
-
-  const handleDeleteWeightLog = (index) => {
-    const updated = weightLogs.filter((_, i) => i !== index);
-    setWeightLogs(updated);
-    if (updated.length > 0) {
-      const last = updated[updated.length - 1];
-      setProfiles(prev => ({
-        ...prev,
-        wife: { ...prev.wife, currentWeight: last.wifeWeight },
-        husband: { ...prev.husband, currentWeight: last.husbandWeight }
-      }));
+  <style>
+    /* Custom Scrollbar */
+    .scrollbar-none::-webkit-scrollbar {
+      display: none;
     }
-  };
+    .scrollbar-none {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
 
-  const handleSaveTargets = () => {
-    setProfiles(prev => ({
-      ...prev,
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // --- REPLACEMENT SAFE SVG ICONS (Fixes Minified React Error #130) ---
+    const IconWrapper = ({ children, className = "w-5 h-5", ...props }) => (
+      <svg className={className} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" {...props}>
+        {children}
+      </svg>
+    );
+
+    const Trophy = (p) => <IconWrapper {...p}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></IconWrapper>;
+    const Flame = (p) => <IconWrapper {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></IconWrapper>;
+    const Droplet = (p) => <IconWrapper {...p}><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></IconWrapper>;
+    const Dumbbell = (p) => <IconWrapper {...p}><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></IconWrapper>;
+    const Calendar = (p) => <IconWrapper {...p}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></IconWrapper>;
+    const TrendingDown = (p) => <IconWrapper {...p}><polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/></IconWrapper>;
+    const CheckCircle2 = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></IconWrapper>;
+    const Circle = (p) => <IconWrapper {...p}><circle cx="12" cy="12" r="10"/></IconWrapper>;
+    const Award = (p) => <IconWrapper {...p}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></IconWrapper>;
+    const RefreshCw = (p) => <IconWrapper {...p}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></IconWrapper>;
+    const Download = (p) => <IconWrapper {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></IconWrapper>;
+    const Plus = (p) => <IconWrapper {...p}><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></IconWrapper>;
+    const Trash2 = (p) => <IconWrapper {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></IconWrapper>;
+    const Edit3 = (p) => <IconWrapper {...p}><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></IconWrapper>;
+    const ChevronRight = (p) => <IconWrapper {...p}><path d="m9 18 6-6-6-6"/></IconWrapper>;
+    const Sparkles = (p) => <IconWrapper {...p}><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"/></IconWrapper>;
+    const Scale = (p) => <IconWrapper {...p}><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h18"/></IconWrapper>;
+    const Activity = (p) => <IconWrapper {...p}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></IconWrapper>;
+    const Apple = (p) => <IconWrapper {...p}><path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06z"/><path d="M10 2c1 .5 2 2 2 5"/></IconWrapper>;
+    const Check = (p) => <IconWrapper {...p}><polyline points="20 6 9 17 4 12"/></IconWrapper>;
+    const Utensils = (p) => <IconWrapper {...p}><path d="M18 2v20"/><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/></IconWrapper>;
+
+    // --- DATA ASAS PROFIL ---
+    const INITIAL_PROFILES = {
       wife: {
-        ...prev.wife,
-        firstTarget: parseFloat(editTargetData.wifeFirst),
-        finalTarget: parseFloat(editTargetData.wifeFinal)
+        name: "Isteri",
+        initialWeight: 115,
+        height: 165,
+        firstTarget: 109,
+        finalTarget: 95,
+        currentWeight: 115,
+        points: 0,
+        avatar: "👩‍🍳"
       },
       husband: {
-        ...prev.husband,
-        firstTarget: parseFloat(editTargetData.husbandFirst),
-        finalTarget: parseFloat(editTargetData.husbandFinal)
+        name: "Suami",
+        initialWeight: 80,
+        height: 159,
+        firstTarget: 76,
+        finalTarget: 70,
+        currentWeight: 80,
+        points: 0,
+        avatar: "👨‍💻"
+      },
+      startDate: new Date().toISOString().split('T')[0]
+    };
+
+    // Menu Cadangan Harian dengan Berat Makanan Spesifik (Gram)
+    const DAILY_MEAL_PLANS = [
+      {
+        dayName: "Isnin",
+        title: "Detox High Protein Kickstart",
+        breakfast: {
+          menu: "Telur Rebus + Roti Perang + Avokado",
+          wifePortion: "2 biji Telur (100g) + 1 keping Roti Wholemeal (35g) + 30g Avokado",
+          husbandPortion: "3 biji Telur (150g) + 2 keping Roti Wholemeal (70g) + 50g Avokado"
+        },
+        lunch: {
+          menu: "Dada Ayam Panggang + Nasi Perang + Ulam/Salad",
+          wifePortion: "150g Dada Ayam + 100g Nasi Perang (Masak) + 150g Ulam Pegaga/Timun",
+          husbandPortion: "180g Dada Ayam + 130g Nasi Perang (Masak) + 150g Ulam Pegaga/Timun"
+        },
+        dinner: {
+          menu: "Sup Ikan Siakap + Sayur Broccoli Rebus",
+          wifePortion: "150g Isi Siakap + 150g Broccoli/Lobak + Sup Kosong (250ml)",
+          husbandPortion: "180g Isi Siakap + 180g Broccoli/Lobak + Sup Kosong (300ml)"
+        },
+        snack: {
+          menu: "Epal Hijau + Kacang Badam",
+          wifePortion: "1 biji Epal Hijau (120g) + 10 biji Badam (12g)",
+          husbandPortion: "1 biji Epal Hijau (150g) + 15 biji Badam (18g)"
+        }
+      },
+      {
+        dayName: "Selasa",
+        title: "Fiber & Lean Omega Day",
+        breakfast: {
+          menu: "Oatmeal Bersama Beri & Chia Seed",
+          wifePortion: "40g Rolled Oat + 150ml Susu Low Fat + 50g Blueberries + 5g Chia",
+          husbandPortion: "60g Rolled Oat + 200ml Susu Low Fat + 50g Blueberries + 10g Chia"
+        },
+        lunch: {
+          menu: "Ikan Salmon / Tenggiri Gril + Keledek Rebus + Bayam",
+          wifePortion: "140g Ikan Salmon + 100g Keledek Manis + 150g Bayam Tumis Air",
+          husbandPortion: "170g Ikan Salmon + 130g Keledek Manis + 150g Bayam Tumis Air"
+        },
+        dinner: {
+          menu: "Salad Ayam Grill & Minyak Zaitun",
+          wifePortion: "150g Dada Ayam + 200g Campuran Salad + 1 sudu teh Minyak Zaitun",
+          husbandPortion: "180g Dada Ayam + 200g Campuran Salad + 1.5 sudu teh Minyak Zaitun"
+        },
+        snack: {
+          menu: "Yogurt Yunani (Greek Yogurt) Tanpa Gula",
+          wifePortion: "120g Greek Yogurt",
+          husbandPortion: "170g Greek Yogurt"
+        }
+      },
+      {
+        dayName: "Rabu",
+        title: "Clean Local Flavors",
+        breakfast: {
+          menu: "Bihoon Goreng Sup Dada Ayam (Kurang Minyak)",
+          wifePortion: "80g Bihoon (Masak) + 80g Isi Ayam + Sawian (100g)",
+          husbandPortion: "120g Bihoon (Masak) + 100g Isi Ayam + Sawian (100g)"
+        },
+        lunch: {
+          menu: "Nasi Suku Suku Separuh (Ayam Kukus Halia)",
+          wifePortion: "150g Ayam Kukus + 100g Nasi Putih/Perang + 150g Timun/Kubis",
+          husbandPortion: "180g Ayam Kukus + 120g Nasi Putih/Perang + 150g Timun/Kubis"
+        },
+        dinner: {
+          menu: "Sup Daging Lean / Haruan & Sayur Sawit",
+          wifePortion: "130g Daging Tanpa Lemak + 150g Sawi Hijau + Sup Bawang",
+          husbandPortion: "160g Daging Tanpa Lemak + 150g Sawi Hijau + Sup Bawang"
+        },
+        snack: {
+          menu: "Buah Jambu Batu (Guava)",
+          wifePortion: "1/2 Biji Jambu Batu (150g)",
+          husbandPortion: "1 Biji Jambu Batu (250g)"
+        }
+      },
+      {
+        dayName: "Khamis",
+        title: "Low-Carb Fat Burn Boost",
+        breakfast: {
+          menu: "Omelet 3 Putih Telur + Cendawan & Bayam",
+          wifePortion: "3 Telur (Guna 1 Kuning, 3 Putih) + 50g Cendawan + 50g Bayam",
+          husbandPortion: "4 Telur (Guna 2 Kuning, 4 Putih) + 70g Cendawan + 70g Bayam"
+        },
+        lunch: {
+          menu: "Ikan Kembung Bakar Air-Fryer + Sambal Ulam",
+          wifePortion: "2 ekor Ikan Kembung (160g) + 90g Nasi Perang + 150g Ulam Raja",
+          husbandPortion: "2 ekor Ikan Kembung Besar (200g) + 120g Nasi Perang + 150g Ulam Raja"
+        },
+        dinner: {
+          menu: "Cauliflower Rice + Daging Cincang Stir-Fry",
+          wifePortion: "150g Cauliflower Rice + 120g Daging Lembu Lean Cincang",
+          husbandPortion: "180g Cauliflower Rice + 150g Daging Lembu Lean Cincang"
+        },
+        snack: {
+          menu: "Kacang Edamame Rebus",
+          wifePortion: "100g Edamame",
+          husbandPortion: "150g Edamame"
+        }
+      },
+      {
+        dayName: "Jumaat",
+        title: "Metabolic Reset & Sea Delight",
+        breakfast: {
+          menu: "Smoothie Protein Beri & Susu Badam",
+          wifePortion: "1 Scoop Protein/Susu Badam 250ml + 80g Beri + 1 sudu Chia",
+          husbandPortion: "1.5 Scoop Protein/Susu Badam 300ml + 100g Beri + 1 sudu Chia"
+        },
+        lunch: {
+          menu: "Udang Sambal Sihat (Kurang Garam/Gula) + Nasi Perang",
+          wifePortion: "140g Udang + 100g Nasi Perang + 150g Bendi Rebus",
+          husbandPortion: "180g Udang + 130g Nasi Perang + 150g Bendi Rebus"
+        },
+        dinner: {
+          menu: "Steak Dada Ayam Lemon Herb + Asparagus",
+          wifePortion: "160g Dada Ayam Gril + 100g Asparagus Panggang",
+          husbandPortion: "200g Dada Ayam Gril + 120g Asparagus Panggang"
+        },
+        snack: {
+          menu: "Buah Naga Merah (Pitaya)",
+          wifePortion: "150g Buah Naga",
+          husbandPortion: "200g Buah Naga"
+        }
+      },
+      {
+        dayName: "Sabtu",
+        title: "Weekend Active Fuel",
+        breakfast: {
+          menu: "Pancake Oat & Pisang (No Flour)",
+          wifePortion: "40g Oat + 1 Biji Pisang + 1 Telur (3 keping kecil)",
+          husbandPortion: "60g Oat + 1.5 Biji Pisang + 2 Telur (4 keping)"
+        },
+        lunch: {
+          menu: "Wrap Tortilla Wholemeal Ayam Crispy Airfryer",
+          wifePortion: "1 Keping Wrap Wholemeal + 130g Isi Ayam Airfryer + Salad",
+          husbandPortion: "2 Keping Wrap Wholemeal + 160g Isi Ayam Airfryer + Salad"
+        },
+        dinner: {
+          menu: "Sup Tomyam Bening Seafood (Tanpa Santan/Minyak)",
+          wifePortion: "150g Seafood (Udang/Sotong/Ikan) + 150g Cendawan/Cendawan Inoki",
+          husbandPortion: "180g Seafood (Udang/Sotong/Ikan) + 180g Cendawan/Cendawan Inoki"
+        },
+        snack: {
+          menu: "Potongan Betik Segar",
+          wifePortion: "150g Betik",
+          husbandPortion: "200g Betik"
+        }
+      },
+      {
+        dayName: "Ahad",
+        title: "Sunday Family Meal Prep Day",
+        breakfast: {
+          menu: "Telur Separuh Masak + Roti Bakar Wholemeal",
+          wifePortion: "2 Biji Telur + 1 Keping Roti Bakar (Tanpa Kaya/Mentega)",
+          husbandPortion: "3 Biji Telur + 2 Keping Roti Bakar (Tanpa Kaya/Mentega)"
+        },
+        lunch: {
+          menu: "Ayam Percik Sihat (Bakar Airfryer) + Nasi Perang",
+          wifePortion: "150g Ayam Bakar + 100g Nasi Perang + Ulam Timun",
+          husbandPortion: "180g Ayam Bakar + 130g Nasi Perang + Ulam Timun"
+        },
+        dinner: {
+          menu: "Sup Tofu & Cendawan Muka",
+          wifePortion: "150g Tofu Lembut + 100g Cendawan + Sup Sayur",
+          husbandPortion: "200g Tofu Lembut + 120g Cendawan + Sup Sayur"
+        },
+        snack: {
+          menu: "Kacang Walnut / Pistachio",
+          wifePortion: "15g Walnut",
+          husbandPortion: "25g Walnut"
+        }
       }
-    }));
-    setShowEditTargetModal(false);
-  };
+    ];
 
-  const handleResetAllData = () => {
-    localStorage.clear();
-    setProfiles(INITIAL_PROFILES);
-    setWeightLogs([{ date: new Date().toISOString().split('T')[0], wifeWeight: 115, husbandWeight: 80, note: 'Timbangan Perdana' }]);
-    setChecklist({});
-    setReflections({});
-    setShowResetModal(false);
-    setActiveTab('dashboard');
-  };
+    const CHALLENGE_WEEKS = [
+      {
+        week: 1,
+        title: "Hydro & Kickstart Detox",
+        objective: "Membina habit minum air secukupnya & menyahtoksin badan bersama.",
+        description: "Fokus pada penghidratan 3 Liter air sehari dan mengurangkan minuman bersuhu manis.",
+        dailyTasks: [
+          "Minum 3.5 Liter Air Kosong",
+          "Elak Semua Minuman Bergula",
+          "Jalan Kaki 15 Minit Bersama",
+          "Tiada Snek Selepas Jam 8 Malam",
+          "Tidur Sekurang-kurangnya 7 Jam",
+          "Sediakan Bekal Sihat Bersama",
+          "Timbang Berat & Rekod Nota Minggu 1"
+        ],
+        tip: "Letakkan botol air 1.5L di atas meja kerja masing-masing sebagai peringatan fizikal."
+      },
+      {
+        week: 2,
+        title: "Potong Gula (Sugar Cut)",
+        objective: "Mengurangkan pengambilan gula tambahan dalam makanan dan minuman.",
+        description: "Minggu ini kita kurangkan karbohidrat ringkas dan manis.",
+        dailyTasks: [
+          "Minum Kopi/Teh Tanpa Gula",
+          "Gantikan Pencuci Mulut Dengan Buah Segar",
+          "Senaman Tabata 10 Minit Bersama",
+          "Makan Salad/Sayuran Hijau Setiap Waktu Makan",
+          "Elak Makanan Diproses (Fast Food)",
+          "Berjalan 6,000 Langkah Hari Ini",
+          "Tukar Nasi Putih Ke Nasi Perang / Suku Suku Separuh"
+        ],
+        tip: "Bila teringin manis, minum semangkuk air suam atau makan sepotong epal hijau."
+      },
+      {
+        week: 3,
+        title: "10,000 Langkah Pasangan",
+        objective: "Meningkatkan pembakaran kalori harian (NEAT) dengan berjalan.",
+        description: "Melakukan senaman impak rendah tetapi berkesan secara santai bersama.",
+        dailyTasks: [
+          "Mencapai 8,000 - 10,000 Langkah",
+          "Jalan Santai Malam 20 Minit Pusing Taman",
+          "Gunakan Tangga Berbanding Lif",
+          "Minum Air 3L",
+          "Porsi Makan Suku-Suku-Separuh",
+          "Stretching Bersama 10 Minit Sebelum Tidur",
+          "Refleksi & Semakan Langkah Seminggu"
+        ],
+        tip: "Jalan sambil bersembang atau mendengar podcast bersama untuk melupakan penat."
+      },
+      {
+        week: 4,
+        title: "Kawalan Porsi & Puasa Intermiten",
+        objective: "Melatih disiplin waktu makan dengan kaedah IF 14:10 atau 16:8.",
+        description: "Memberikan rehat pada sistem penghadaman dan membakar lemak degil.",
+        dailyTasks: [
+          "Berpuasa IF 14-16 Jam",
+          "Berbuka Puasa Dengan Protein & Sayur Dahulu",
+          "Minum Air Cukup Semasa Window Makan",
+          "Walk 30 Minit Sebelum Berbuka",
+          "Tiada Makanan Ringan / Crispy Snack",
+          "Makan Malam Sebelum Jam 7.30 Malam",
+          "Evaluasi Berat Badan Sebulan (Milestone 1 Check)"
+        ],
+        tip: "Semasa berpuasa, anda masih boleh minum air kosong, kopi o tanpa gula, atau teh hijau."
+      },
+      {
+        week: 5,
+        title: "Power Protein Week",
+        objective: "Meningkatkan jisim otot bersih untuk mempercepatkan metabolisme.",
+        description: "Mengutamakan makanan kaya protein seperti dada ayam, telur, dan ikan.",
+        dailyTasks: [
+          "Sediakan Protein minimum 20g-30g Setiap Hidangan",
+          "Senaman Kekuatan / Bodyweight Workout 20 Minit",
+          "Kurangkan Minyak Dalam Masakan (Airfryer / Kukus)",
+          "Minum 3.5L Air",
+          "Makan 2 Biji Telur Rebus Sebagai Snek",
+          "Jalan Kaki 7,000 Langkah",
+          "Perancangan Menu Protein Minggu Depan"
+        ],
+        tip: "Protein menjaga korang kenyang lebih lama dan mengurangkan 'craving' malam."
+      },
+      {
+        week: 6,
+        title: "Cabaran Tanpa Karbo Kompleks Malam",
+        objective: "Mengurangkan penumpuan glikogen malam untuk pembakaran lemak optimum.",
+        description: "Makan malam bertemakan sup, salad, atau protein panggang.",
+        dailyTasks: [
+          "Makan Malam Tanpa Nasi/Roti/Mie",
+          "Senaman Kardio (HIIT) 15 Minit",
+          "Minum Teh Hijau Unsweetened",
+          "Mencapai 8,000 Langkah",
+          "Tidur Sebelum Jam 11 Malam",
+          "Makan Buah Berserat Tinggi",
+          "Sediakan Meals Prep Bersama Suami/Isteri"
+        ],
+        tip: "Gantikan nasi dengan cauliflower rice atau salad besar bercampur dada ayam panggang."
+      },
+      {
+        week: 7,
+        title: "Pusingan Pertengahan (Halfway Sprint)",
+        objective: "Menyemarakkan semula semangat separuh perjalanan cabaran!",
+        description: "Variasi senaman baru dan komitmen tahap maksimum.",
+        dailyTasks: [
+          "Workout Pasangan (Couple Pushups & Planks)",
+          "Minum 3.5L Air Kosong",
+          "Gula Tambahan ZERO",
+          "Jalan Kaki 10,000 Langkah",
+          "Makan 3 Hidangan Sayur-sayuran",
+          "Sesi Urutan / Relaxation Pasangan",
+          "Semakan Gambar Progress Pertengahan (Week 7 Photo)"
+        ],
+        tip: "Ambil gambar progress bersama! Perubahan badan fizikal lebih jelas daripada angka timbang."
+      },
+      {
+        week: 8,
+        title: "Kardio & Ketahanan (Endurance Boost)",
+        objective: "Meningkatkan stamina jantung dan paru-paru.",
+        description: "Gabungan senaman kardio ringan dan brisk walking berturut-turut.",
+        dailyTasks: [
+          "Brisk Walk / Jogging 30 Minit",
+          "Stretching Penuh Badan 15 Minit",
+          "Kawalan Garam & Makanan Masin",
+          "Minum Air 3L",
+          "Tidur Awal (8 Jam)",
+          "Makan Nasi Suku Porsi Sahaja",
+          "Refleksi Tahap Tenaga & Stamina"
+        ],
+        tip: "Kurangkan garam untuk mengelakkan takungan air (water retention) dalam badan."
+      },
+      {
+        week: 9,
+        title: "Clean Eating & Whole Foods",
+        objective: "Membersihkan usus dengan makanan asli tanpa pengawet.",
+        description: "Hanya makan makanan semula jadi (real food) sepanjang minggu.",
+        dailyTasks: [
+          "Semua Makanan Dimasak Sendiri (Homecooked)",
+          "Tiada Sos Bergula / Kiub Perasa Tiruan",
+          "Minum Jus Hijau / Smoothies Tanpa Gula",
+          "Jalan 8,000 Langkah",
+          "Senaman Rintangan / Resistance Band",
+          "Minum Air 3.5L",
+          "Persediaan Mental Untuk Fasa Akhir 30 Hari"
+        ],
+        tip: "Gunakan rempah ratus semula jadi seperti kunyit, lada hitam, dan serbuk bawang putih untuk rasa yang sedap."
+      },
+      {
+        week: 10,
+        title: "Core & Flexibility (Kekuatan Teras)",
+        objective: "Menguatkan otot perut, pinggang dan fleksibiliti badan.",
+        description: "Sesi Pilates / Core Workout ringan untuk posture badan yang anggun & tegap.",
+        dailyTasks: [
+          "Plank Challenge (Hold 45-60 Saat x 3 Set)",
+          "Senaman Abdominal / Pilates Pasangan 20 Minit",
+          "Minum Air 3L",
+          "Tiada Snek Tinggi Kalori",
+          "Makan Protein Cukup",
+          "Jalan Kaki 9,000 Langkah",
+          "Refleksi Pinggang & Perubahan Ukuran Lilitan"
+        ],
+        tip: "Kekuatan teras (core) mengurangkan sakit belakang dan memberikan bentuk badan lebih mantap."
+      },
+      {
+        week: 11,
+        title: "Pecutan Akhir (Final Burn)",
+        objective: "Maksimumkan penurunan berat badan sebelum minggu penutup.",
+        description: "Disiplin tahap tinggi dengan gabungan IF dan senaman harian.",
+        dailyTasks: [
+          "Berpuasa Intermiten 16 Jam",
+          "Workout 25 Minit Bersama",
+          "Langkah Harian 10,000",
+          "Minum Air 3.5L",
+          "Zero Junk Food / Zero Fast Food",
+          "Makan Malam Sup Protein & Sayur",
+          "Sokongan & Kata-Kata Semangat Pasangan"
+        ],
+        tip: "Saling memberi sokongan moral. Pasangan anda adalah kekuatan terbesar anda!"
+      },
+      {
+        week: 12,
+        title: "Kemenangan 90 Hari & Habit Abadi",
+        objective: "Meraikan kejayaan 90 hari dan menetapkan gaya hidup sihat berterusan.",
+        description: "Peringkat akhir penentu keputusan kejayaan transformer korang berdua!",
+        dailyTasks: [
+          "Timbang Berat Akhir Official 90 Hari",
+          "Ambil Gambar Progress Akhir Pasangan",
+          "Workout Santai Meraikan Kejayaan",
+          "Makan Malam Keraian Sihat (Healthy Celebration Meal)",
+          "Minum Air 3L",
+          "Senaraikan 5 Habit Baru Yang Akan Diteruskan",
+          "Cipta Matlamat Kesihatan Jangka Panjang Baru"
+        ],
+        tip: "Syabas! Ini bukan penamat, tetapi permulaan gaya hidup sihat untuk seumur hidup ❤️."
+      }
+    ];
 
-  const handleExportData = () => {
-    const dataObj = { profiles, weightLogs, dailyHabits, checklist, reflections };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataObj, null, 2));
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href", dataStr);
-    downloadAnchor.setAttribute("download", `90Days_Couple_Challenge_Data_${new Date().toISOString().split('T')[0]}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
+    const INITIAL_BADGES = [
+      { id: 'start', title: 'Perjalanan Bermula', desc: 'Memulakan Cabaran 90 Hari', icon: '🚀', requirement: () => true },
+      { id: 'first_2kg', title: '2kg Pertama Terbakar', desc: 'Penurunan 2kg pertama', icon: '🔥', requirement: (p) => {
+        const wifeLost = p.wife.initialWeight - p.wife.currentWeight;
+        const husbLost = p.husband.initialWeight - p.husband.currentWeight;
+        return wifeLost >= 2 || husbLost >= 2;
+      }},
+      { id: 'water_master', title: 'Juara Hidrasi', desc: 'Mencapai 500+ Mata Hidrasi', icon: '💧', requirement: (p) => (p.wife.points + p.husband.points) >= 500 },
+      { id: 'halfway', title: 'Pahlawan Pertengahan', desc: 'Tiba di Minggu ke-6 Cabaran', icon: '🛡️', requirement: (p, history, week) => week >= 6 },
+      { id: 'target_met', title: 'Sasaran Dicapai!', desc: 'Berjaya mencapai sasaran berat pertama', icon: '👑', requirement: (p) => p.wife.currentWeight <= p.wife.firstTarget || p.husband.currentWeight <= p.husband.firstTarget },
+      { id: '1000_pts', title: 'Kelab 1,000 Mata', desc: 'Terkumpul 1,000 jumlah mata pasangan', icon: '⭐', requirement: (p) => (p.wife.points + p.husband.points) >= 1000 }
+    ];
 
-  // Percentage Calculations
-  const calcProgress = (initial, current, target) => {
-    const totalToLose = initial - target;
-    if (totalToLose <= 0) return 100;
-    const currentLost = initial - current;
-    const pct = Math.round((currentLost / totalToLose) * 100);
-    return Math.min(Math.max(pct, 0), 100);
-  };
+    // Helper Functions
+    const calculateBMI = (weight, heightCm) => {
+      if (!weight || !heightCm) return 0;
+      const heightM = heightCm / 100;
+      return (weight / (heightM * heightM)).toFixed(1);
+    };
 
-  const wifeProgress = calcProgress(profiles.wife.initialWeight, profiles.wife.currentWeight, profiles.wife.finalTarget);
-  const husbandProgress = calcProgress(profiles.husband.initialWeight, profiles.husband.currentWeight, profiles.husband.finalTarget);
-  const combinedPoints = profiles.wife.points + profiles.husband.points;
+    const getBMICategory = (bmi) => {
+      if (bmi < 18.5) return { label: 'Kurang Berat', color: 'text-blue-500' };
+      if (bmi < 24.9) return { label: 'Ideal', color: 'text-emerald-600 font-bold' };
+      if (bmi < 29.9) return { label: 'Berlebihan Berat', color: 'text-amber-500' };
+      return { label: 'Obesiti', color: 'text-pink-600 font-bold' };
+    };
 
-  const wifeBmi = calculateBMI(profiles.wife.currentWeight, profiles.wife.height);
-  const husbandBmi = calculateBMI(profiles.husband.currentWeight, profiles.husband.height);
-  const wifeBmiCat = getBMICategory(wifeBmi);
-  const husbandBmiCat = getBMICategory(husbandBmi);
+    function App() {
+      const [activeTab, setActiveTab] = useState('dashboard');
+      const [profiles, setProfiles] = useState(() => {
+        const saved = localStorage.getItem('90day_profiles_v2');
+        return saved ? JSON.parse(saved) : INITIAL_PROFILES;
+      });
 
-  // Status Pencapaian vs Sasaran Hari Ini
-  const getWifeStatus = () => {
-    const diff = profiles.wife.currentWeight - dayStats.wifeExpectedWeightToday;
-    if (diff <= 0) return { text: "Pencapaian Hebat! ✨", bg: "bg-emerald-100 text-emerald-800 border-emerald-300" };
-    if (diff <= 0.5) return { text: "On Track 👍", bg: "bg-blue-100 text-blue-800 border-blue-300" };
-    return { text: "Terlebih " + diff.toFixed(1) + "kg dari Sasaran", bg: "bg-pink-100 text-pink-800 border-pink-300" };
-  };
-
-  const getHusbandStatus = () => {
-    const diff = profiles.husband.currentWeight - dayStats.husbandExpectedWeightToday;
-    if (diff <= 0) return { text: "Pencapaian Hebat! ✨", bg: "bg-emerald-100 text-emerald-800 border-emerald-300" };
-    if (diff <= 0.5) return { text: "On Track 👍", bg: "bg-blue-100 text-blue-800 border-blue-300" };
-    return { text: "Terlebih " + diff.toFixed(1) + "kg dari Sasaran", bg: "bg-amber-100 text-amber-800 border-amber-300" };
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-20">
+      const [currentWeekNum, setCurrentWeekNum] = useState(1);
+      const [selectedDayMealIdx, setSelectedDayMealIdx] = useState(0);
       
-      {/* HEADER BAR WITH BLUE & PINK GRADIENT ACCENT */}
-      <header className="sticky top-0 z-40 bg-gradient-to-r from-blue-700 via-indigo-700 to-pink-600 text-white shadow-lg border-b border-white/10">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="bg-amber-400 text-slate-900 p-2 rounded-2xl shadow-md">
-              <Trophy className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5">
-                90 DAYS COUPLE CHALLENGE
-              </h1>
-              <p className="text-xs text-pink-100 font-medium">Stronger Together, Healthier Forever ❤️</p>
-            </div>
-          </div>
+      const [weightLogs, setWeightLogs] = useState(() => {
+        const saved = localStorage.getItem('90day_weight_logs_v2');
+        return saved ? JSON.parse(saved) : [
+          { date: new Date().toISOString().split('T')[0], wifeWeight: 115, husbandWeight: 80, note: 'Timbangan Perdana (Hari 1)' }
+        ];
+      });
 
-          <div className="hidden sm:flex items-center space-x-2 text-xs bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20">
-            <Sparkles className="w-4 h-4 text-amber-300" />
-            <span>Hari ke-<b>{dayStats.currentDay}</b> daripada 90 Hari</span>
-          </div>
-        </div>
-      </header>
+      const [dailyHabits, setDailyHabits] = useState(() => {
+        const saved = localStorage.getItem('90day_daily_habits_v2');
+        const today = new Date().toISOString().split('T')[0];
+        return saved ? JSON.parse(saved) : {
+          date: today,
+          wifeWater: 4,
+          husbandWater: 5,
+          wifeCalories: 1500,
+          husbandCalories: 1750,
+          workoutDone: true,
+          workoutNotes: 'Brisk walk 25 minit di taman',
+          completedMeals: {}
+        };
+      });
 
-      {/* MAIN CONTAINER */}
-      <main className="max-w-6xl mx-auto px-4 pt-6 pb-12">
-        
-        {/* TOP METRICS SUMMARY */}
-        <section className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
-            <div className="p-3 bg-amber-50 rounded-xl text-amber-500">
-              <Trophy className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Mata Pasangan</p>
-              <p className="text-xl font-extrabold text-slate-800">{combinedPoints} <span className="text-xs text-amber-600 font-normal">pts</span></p>
-            </div>
-          </div>
+      const [checklist, setChecklist] = useState(() => {
+        const saved = localStorage.getItem('90day_checklist_v2');
+        return saved ? JSON.parse(saved) : {};
+      });
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
-            <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
-              <TrendingDown className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Jumlah Terbakar</p>
-              <p className="text-xl font-extrabold text-emerald-600">
-                {((profiles.wife.initialWeight - profiles.wife.currentWeight) + (profiles.husband.initialWeight - profiles.husband.currentWeight)).toFixed(1)} <span className="text-xs font-normal">kg</span>
-              </p>
-            </div>
-          </div>
+      const [reflections, setReflections] = useState(() => {
+        const saved = localStorage.getItem('90day_reflections_v2');
+        return saved ? JSON.parse(saved) : {};
+      });
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
-            <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Hari Berbaki</p>
-              <p className="text-xl font-extrabold text-slate-800">{dayStats.remainingDays} <span className="text-xs font-normal">hari</span></p>
-            </div>
-          </div>
+      const [newLog, setNewLog] = useState({
+        date: new Date().toISOString().split('T')[0],
+        wifeWeight: profiles.wife.currentWeight,
+        husbandWeight: profiles.husband.currentWeight,
+        note: ''
+      });
 
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
-            <div className="p-3 bg-pink-50 rounded-xl text-pink-600">
-              <Activity className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500 font-medium">Minggu Cabaran</p>
-              <p className="text-xl font-extrabold text-slate-800">Minggu {currentWeekNum}</p>
-            </div>
-          </div>
-        </section>
+      const [showEditTargetModal, setShowEditTargetModal] = useState(false);
+      const [editTargetData, setEditTargetData] = useState({
+        wifeFirst: profiles.wife.firstTarget,
+        wifeFinal: profiles.wife.finalTarget,
+        husbandFirst: profiles.husband.firstTarget,
+        husbandFinal: profiles.husband.finalTarget
+      });
 
-        {/* DAILY DATE & EXPECTED WEIGHT TARGET BAR */}
-        <section className="mb-6 bg-gradient-to-r from-blue-600 to-pink-500 text-white rounded-3xl p-5 shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-3">
-            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
-              <Calendar className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-white/80">Tarikh Hari Ini</span>
-              <h3 className="text-lg font-extrabold text-white">{dayStats.currentDateStr}</h3>
-            </div>
-          </div>
+      const [showResetModal, setShowResetModal] = useState(false);
 
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            {/* Wife Daily Target */}
-            <div className="flex-1 md:flex-none bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl text-center">
-              <span className="text-[10px] text-pink-200 font-bold block uppercase">Sasaran Isteri Hari Ini</span>
-              <span className="text-base font-extrabold text-white">{dayStats.wifeExpectedWeightToday} kg</span>
-            </div>
+      useEffect(() => {
+        localStorage.setItem('90day_profiles_v2', JSON.stringify(profiles));
+      }, [profiles]);
 
-            {/* Husband Daily Target */}
-            <div className="flex-1 md:flex-none bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl text-center">
-              <span className="text-[10px] text-blue-200 font-bold block uppercase">Sasaran Suami Hari Ini</span>
-              <span className="text-base font-extrabold text-white">{dayStats.husbandExpectedWeightToday} kg</span>
-            </div>
-          </div>
-        </section>
+      useEffect(() => {
+        localStorage.setItem('90day_weight_logs_v2', JSON.stringify(weightLogs));
+      }, [weightLogs]);
 
-        {/* NAVIGATION TABS */}
-        <div className="flex overflow-x-auto space-x-2 border-b border-slate-200 pb-3 mb-6 scrollbar-none">
-          {[
-            { id: 'dashboard', label: 'Dashboard Utama', icon: Trophy },
-            { id: 'menu', label: 'Menu & Berat Makanan Harian', icon: Utensils },
-            { id: 'challenge', label: '12 Minggu Cabaran', icon: Flame },
-            { id: 'tracker', label: 'Rekod Berat & Graf', icon: Scale },
-            { id: 'daily', label: 'Log Pemakanan & Habit', icon: Apple },
-            { id: 'rewards', label: 'Ganjaran & Lencana', icon: Award },
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${
-                  isActive 
-                    ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md' 
-                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : ''}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
+      useEffect(() => {
+        localStorage.setItem('90day_daily_habits_v2', JSON.stringify(dailyHabits));
+      }, [dailyHabits]);
 
-        {/* ==================== TAB 1: DASHBOARD UTAMA ==================== */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            
-            {/* HERO DUAL PROFILE CARDS (PINK & BLUE THEME) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* ISTERI CARD - ELEGANT PINK */}
-              <div className="bg-white rounded-3xl p-6 border-2 border-pink-100 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-pink-500 text-white text-xs px-4 py-1.5 rounded-bl-2xl font-bold shadow-sm">
-                  ISTERI 🌸
+      useEffect(() => {
+        localStorage.setItem('90day_checklist_v2', JSON.stringify(checklist));
+      }, [checklist]);
+
+      useEffect(() => {
+        localStorage.setItem('90day_reflections_v2', JSON.stringify(reflections));
+      }, [reflections]);
+
+      const dayStats = useMemo(() => {
+        const start = new Date(profiles.startDate);
+        const today = new Date();
+        const diffTime = Math.abs(today - start);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const currentDay = Math.min(Math.max(diffDays, 1), 90);
+        const remainingDays = Math.max(90 - currentDay, 0);
+
+        const wifeTotalTargetDrop = profiles.wife.initialWeight - profiles.wife.firstTarget;
+        const husbandTotalTargetDrop = profiles.husband.initialWeight - profiles.husband.firstTarget;
+
+        const wifeExpectedWeightToday = (profiles.wife.initialWeight - (wifeTotalTargetDrop * (currentDay / 90))).toFixed(1);
+        const husbandExpectedWeightToday = (profiles.husband.initialWeight - (husbandTotalTargetDrop * (currentDay / 90))).toFixed(1);
+
+        const currentDateStr = today.toLocaleDateString('ms-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+        return { 
+          currentDay, 
+          remainingDays, 
+          currentDateStr,
+          wifeExpectedWeightToday: parseFloat(wifeExpectedWeightToday),
+          husbandExpectedWeightToday: parseFloat(husbandExpectedWeightToday)
+        };
+      }, [profiles.startDate, profiles.wife, profiles.husband]);
+
+      const updatePoints = (newChecklist) => {
+        let wifePts = 0;
+        let husbPts = 0;
+        Object.keys(newChecklist).forEach(key => {
+          if (newChecklist[key]) {
+            if (key.endsWith('wife')) wifePts += 10;
+            if (key.endsWith('husband')) husbPts += 10;
+          }
+        });
+        setProfiles(prev => ({
+          ...prev,
+          wife: { ...prev.wife, points: wifePts },
+          husband: { ...prev.husband, points: husbPts }
+        }));
+      };
+
+      const handleTaskToggle = (weekNum, dayIdx, person) => {
+        const key = `week-${weekNum}-day-${dayIdx}-${person}`;
+        const updated = { ...checklist, [key]: !checklist[key] };
+        setChecklist(updated);
+        updatePoints(updated);
+      };
+
+      const handleMealToggle = (mealType) => {
+        const key = `day-${selectedDayMealIdx}-${mealType}`;
+        const updatedMeals = {
+          ...dailyHabits.completedMeals,
+          [key]: !dailyHabits.completedMeals?.[key]
+        };
+        setDailyHabits({ ...dailyHabits, completedMeals: updatedMeals });
+      };
+
+      const handleAddWeightLog = (e) => {
+        e.preventDefault();
+        const wVal = parseFloat(newLog.wifeWeight);
+        const hVal = parseFloat(newLog.husbandWeight);
+
+        if (isNaN(wVal) || isNaN(hVal)) return;
+
+        const updatedLogs = [...weightLogs, { ...newLog, wifeWeight: wVal, husbandWeight: hVal }];
+        updatedLogs.sort((a, b) => new Date(a.date) - new Date(b.date));
+        setWeightLogs(updatedLogs);
+
+        setProfiles(prev => ({
+          ...prev,
+          wife: { ...prev.wife, currentWeight: wVal },
+          husband: { ...prev.husband, currentWeight: hVal }
+        }));
+
+        setNewLog({
+          date: new Date().toISOString().split('T')[0],
+          wifeWeight: wVal,
+          husbandWeight: hVal,
+          note: ''
+        });
+      };
+
+      const handleDeleteWeightLog = (index) => {
+        const updated = weightLogs.filter((_, i) => i !== index);
+        setWeightLogs(updated);
+        if (updated.length > 0) {
+          const last = updated[updated.length - 1];
+          setProfiles(prev => ({
+            ...prev,
+            wife: { ...prev.wife, currentWeight: last.wifeWeight },
+            husband: { ...prev.husband, currentWeight: last.husbandWeight }
+          }));
+        }
+      };
+
+      const handleSaveTargets = () => {
+        setProfiles(prev => ({
+          ...prev,
+          wife: {
+            ...prev.wife,
+            firstTarget: parseFloat(editTargetData.wifeFirst),
+            finalTarget: parseFloat(editTargetData.wifeFinal)
+          },
+          husband: {
+            ...prev.husband,
+            firstTarget: parseFloat(editTargetData.husbandFirst),
+            finalTarget: parseFloat(editTargetData.husbandFinal)
+          }
+        }));
+        setShowEditTargetModal(false);
+      };
+
+      const handleResetAllData = () => {
+        localStorage.clear();
+        setProfiles(INITIAL_PROFILES);
+        setWeightLogs([{ date: new Date().toISOString().split('T')[0], wifeWeight: 115, husbandWeight: 80, note: 'Timbangan Perdana' }]);
+        setChecklist({});
+        setReflections({});
+        setShowResetModal(false);
+        setActiveTab('dashboard');
+      };
+
+      const handleExportData = () => {
+        const dataObj = { profiles, weightLogs, dailyHabits, checklist, reflections };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataObj, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `90Days_Couple_Challenge_Data_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      };
+
+      const calcProgress = (initial, current, target) => {
+        const totalToLose = initial - target;
+        if (totalToLose <= 0) return 100;
+        const currentLost = initial - current;
+        const pct = Math.round((currentLost / totalToLose) * 100);
+        return Math.min(Math.max(pct, 0), 100);
+      };
+
+      const wifeProgress = calcProgress(profiles.wife.initialWeight, profiles.wife.currentWeight, profiles.wife.finalTarget);
+      const husbandProgress = calcProgress(profiles.husband.initialWeight, profiles.husband.currentWeight, profiles.husband.finalTarget);
+      const combinedPoints = profiles.wife.points + profiles.husband.points;
+
+      const wifeBmi = calculateBMI(profiles.wife.currentWeight, profiles.wife.height);
+      const husbandBmi = calculateBMI(profiles.husband.currentWeight, profiles.husband.height);
+      const wifeBmiCat = getBMICategory(wifeBmi);
+      const husbandBmiCat = getBMICategory(husbandBmi);
+
+      const getWifeStatus = () => {
+        const diff = profiles.wife.currentWeight - dayStats.wifeExpectedWeightToday;
+        if (diff <= 0) return { text: "Pencapaian Hebat! ✨", bg: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+        if (diff <= 0.5) return { text: "On Track 👍", bg: "bg-blue-100 text-blue-800 border-blue-300" };
+        return { text: "Terlebih " + diff.toFixed(1) + "kg dari Sasaran", bg: "bg-pink-100 text-pink-800 border-pink-300" };
+      };
+
+      const getHusbandStatus = () => {
+        const diff = profiles.husband.currentWeight - dayStats.husbandExpectedWeightToday;
+        if (diff <= 0) return { text: "Pencapaian Hebat! ✨", bg: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+        if (diff <= 0.5) return { text: "On Track 👍", bg: "bg-blue-100 text-blue-800 border-blue-300" };
+        return { text: "Terlebih " + diff.toFixed(1) + "kg dari Sasaran", bg: "bg-amber-100 text-amber-800 border-amber-300" };
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-20">
+          
+          {/* HEADER BAR */}
+          <header className="sticky top-0 z-40 bg-gradient-to-r from-blue-700 via-indigo-700 to-pink-600 text-white shadow-lg border-b border-white/10">
+            <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="bg-amber-400 text-slate-900 p-2 rounded-2xl shadow-md">
+                  <Trophy className="w-6 h-6" />
                 </div>
-
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-14 h-14 bg-pink-100 rounded-2xl flex items-center justify-center text-3xl border border-pink-200 shadow-inner">
-                    {profiles.wife.avatar}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-800">{profiles.wife.name}</h2>
-                    <p className="text-xs text-slate-500">Tinggi: {profiles.wife.height} cm • BMI: <b className="text-slate-700">{wifeBmi}</b> (<span className={wifeBmiCat.color}>{wifeBmiCat.label}</span>)</p>
-                  </div>
-                </div>
-
-                {/* Target Weight Status Indicator */}
-                <div className="mb-4 flex items-center justify-between bg-pink-50 p-2.5 rounded-2xl border border-pink-100">
-                  <span className="text-xs text-pink-800 font-semibold">Sasaran Berat Hari Ini: <b>{dayStats.wifeExpectedWeightToday} kg</b></span>
-                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${getWifeStatus().bg}`}>
-                    {getWifeStatus().text}
-                  </span>
-                </div>
-
-                {/* Stat Grid */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl mb-4 border border-slate-100 text-center">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Awal</span>
-                    <span className="text-lg font-bold text-slate-700">{profiles.wife.initialWeight} <span className="text-xs font-normal">kg</span></span>
-                  </div>
-                  <div className="border-x border-slate-200">
-                    <span className="text-[10px] uppercase tracking-wider text-pink-600 font-bold block">Terkini</span>
-                    <span className="text-xl font-extrabold text-pink-600">{profiles.wife.currentWeight} <span className="text-xs font-normal">kg</span></span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-amber-600 font-bold block">Sasaran 1</span>
-                    <span className="text-lg font-bold text-slate-700">{profiles.wife.firstTarget} <span className="text-xs font-normal">kg</span></span>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-1.5 mb-4">
-                  <div className="flex justify-between text-xs font-medium">
-                    <span className="text-slate-600">Pencapaian Penurunan</span>
-                    <span className="text-pink-600 font-bold">{wifeProgress}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200">
-                    <div 
-                      className="bg-gradient-to-r from-pink-400 to-rose-500 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${wifeProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
-                    <span>Turun: <b>{(profiles.wife.initialWeight - profiles.wife.currentWeight).toFixed(1)} kg</b></span>
-                    <span>Sasaran Akhir: <b>{profiles.wife.finalTarget} kg</b></span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
-                  <span className="text-slate-500">Mata Terkumpul:</span>
-                  <span className="px-3 py-1 bg-pink-100 text-pink-800 font-bold rounded-full border border-pink-200">
-                    ⭐ {profiles.wife.points} Pts
-                  </span>
-                </div>
-              </div>
-
-              {/* SUAMI CARD - VIBRANT BLUE */}
-              <div className="bg-white rounded-3xl p-6 border-2 border-blue-100 shadow-sm relative overflow-hidden">
-                <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs px-4 py-1.5 rounded-bl-2xl font-bold shadow-sm">
-                  SUAMI 🧢
-                </div>
-
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-3xl border border-blue-200 shadow-inner">
-                    {profiles.husband.avatar}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-800">{profiles.husband.name}</h2>
-                    <p className="text-xs text-slate-500">Tinggi: {profiles.husband.height} cm • BMI: <b className="text-slate-700">{husbandBmi}</b> (<span className={husbandBmiCat.color}>{husbandBmiCat.label}</span>)</p>
-                  </div>
-                </div>
-
-                {/* Target Weight Status Indicator */}
-                <div className="mb-4 flex items-center justify-between bg-blue-50 p-2.5 rounded-2xl border border-blue-100">
-                  <span className="text-xs text-blue-800 font-semibold">Sasaran Berat Hari Ini: <b>{dayStats.husbandExpectedWeightToday} kg</b></span>
-                  <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${getHusbandStatus().bg}`}>
-                    {getHusbandStatus().text}
-                  </span>
-                </div>
-
-                {/* Stat Grid */}
-                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl mb-4 border border-slate-100 text-center">
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Awal</span>
-                    <span className="text-lg font-bold text-slate-700">{profiles.husband.initialWeight} <span className="text-xs font-normal">kg</span></span>
-                  </div>
-                  <div className="border-x border-slate-200">
-                    <span className="text-[10px] uppercase tracking-wider text-blue-600 font-bold block">Terkini</span>
-                    <span className="text-xl font-extrabold text-blue-600">{profiles.husband.currentWeight} <span className="text-xs font-normal">kg</span></span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] uppercase tracking-wider text-amber-600 font-bold block">Sasaran 1</span>
-                    <span className="text-lg font-bold text-slate-700">{profiles.husband.firstTarget} <span className="text-xs font-normal">kg</span></span>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="space-y-1.5 mb-4">
-                  <div className="flex justify-between text-xs font-medium">
-                    <span className="text-slate-600">Pencapaian Penurunan</span>
-                    <span className="text-blue-600 font-bold">{husbandProgress}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200">
-                    <div 
-                      className="bg-gradient-to-r from-blue-400 to-indigo-600 h-full rounded-full transition-all duration-500" 
-                      style={{ width: `${husbandProgress}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
-                    <span>Turun: <b>{(profiles.husband.initialWeight - profiles.husband.currentWeight).toFixed(1)} kg</b></span>
-                    <span>Sasaran Akhir: <b>{profiles.husband.finalTarget} kg</b></span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
-                  <span className="text-slate-500">Mata Terkumpul:</span>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-800 font-bold rounded-full border border-blue-200">
-                    ⭐ {profiles.husband.points} Pts
-                  </span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* QUICK ACTIONS & TARGET SETTINGS */}
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="text-xs text-slate-600 flex items-center space-x-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span><b>Tip Perjalanan:</b> Konsistensi kecil setiap hari membawa perubahan besar dalam 90 hari!</span>
-              </div>
-              <button
-                onClick={() => setShowEditTargetModal(true)}
-                className="px-3.5 py-2 bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-200 shadow-sm flex items-center space-x-1.5"
-              >
-                <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                <span>Selasar Sasaran Berat</span>
-              </button>
-            </div>
-
-            {/* CURRENT WEEK PREVIEW CARD */}
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white rounded-3xl p-6 shadow-md relative overflow-hidden">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                 <div>
-                  <span className="px-3 py-1 bg-pink-500 text-white font-bold text-xs rounded-full uppercase tracking-wider inline-block mb-2 shadow">
-                    Cabaran Minggu Semasa ({currentWeekNum}/12)
-                  </span>
-                  <h3 className="text-2xl font-bold">{CHALLENGE_WEEKS[currentWeekNum - 1].title}</h3>
-                  <p className="text-sm text-blue-100 mt-1">{CHALLENGE_WEEKS[currentWeekNum - 1].objective}</p>
+                  <h1 className="text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5">
+                    90 DAYS COUPLE CHALLENGE
+                  </h1>
+                  <p className="text-xs text-pink-100 font-medium">Stronger Together, Healthier Forever ❤️</p>
                 </div>
-                <button
-                  onClick={() => setActiveTab('challenge')}
-                  className="px-5 py-2.5 bg-white text-blue-800 font-bold text-xs rounded-xl shadow hover:bg-slate-100 flex items-center justify-center space-x-1 self-start md:self-auto"
-                >
-                  <span>Buka Checklist Minggu Ini</span>
-                  <ChevronRight className="w-4 h-4" />
-                </button>
               </div>
 
-              <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 text-xs text-blue-50 flex items-start space-x-3">
-                <Sparkles className="w-5 h-5 text-amber-300 flex-shrink-0 mt-0.5" />
-                <div>
-                  <b className="text-white block mb-0.5">Tip Kebijaksanaan Pasangan:</b>
-                  {CHALLENGE_WEEKS[currentWeekNum - 1].tip}
-                </div>
+              <div className="hidden sm:flex items-center space-x-2 text-xs bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20">
+                <Sparkles className="w-4 h-4 text-amber-300" />
+                <span>Hari ke-<b>{dayStats.currentDay}</b> daripada 90 Hari</span>
               </div>
             </div>
+          </header>
 
-          </div>
-        )}
-
-        {/* ==================== TAB 2: MENU & BERAT MAKANAN HARIAN ==================== */}
-        {activeTab === 'menu' && (
-          <div className="space-y-6">
+          {/* MAIN CONTAINER */}
+          <main className="max-w-6xl mx-auto px-4 pt-6 pb-12">
             
-            {/* DAY SELECTOR */}
-            <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
-              {DAILY_MEAL_PLANS.map((plan, idx) => {
-                const isActive = idx === selectedDayMealIdx;
+            {/* TOP METRICS SUMMARY */}
+            <section className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
+                <div className="p-3 bg-amber-50 rounded-xl text-amber-500">
+                  <Trophy className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Mata Pasangan</p>
+                  <p className="text-xl font-extrabold text-slate-800">{combinedPoints} <span className="text-xs text-amber-600 font-normal">pts</span></p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
+                <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600">
+                  <TrendingDown className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Jumlah Terbakar</p>
+                  <p className="text-xl font-extrabold text-emerald-600">
+                    {((profiles.wife.initialWeight - profiles.wife.currentWeight) + (profiles.husband.initialWeight - profiles.husband.currentWeight)).toFixed(1)} <span className="text-xs font-normal">kg</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
+                <div className="p-3 bg-blue-50 rounded-xl text-blue-600">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Hari Berbaki</p>
+                  <p className="text-xl font-extrabold text-slate-800">{dayStats.remainingDays} <span className="text-xs font-normal">hari</span></p>
+                </div>
+              </div>
+
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
+                <div className="p-3 bg-pink-50 rounded-xl text-pink-600">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-medium">Minggu Cabaran</p>
+                  <p className="text-xl font-extrabold text-slate-800">Minggu {currentWeekNum}</p>
+                </div>
+              </div>
+            </section>
+
+            {/* DAILY DATE & EXPECTED WEIGHT TARGET BAR */}
+            <section className="mb-6 bg-gradient-to-r from-blue-600 to-pink-500 text-white rounded-3xl p-5 shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-white/80">Tarikh Hari Ini</span>
+                  <h3 className="text-lg font-extrabold text-white">{dayStats.currentDateStr}</h3>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <div className="flex-1 md:flex-none bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl text-center">
+                  <span className="text-[10px] text-pink-200 font-bold block uppercase">Sasaran Isteri Hari Ini</span>
+                  <span className="text-base font-extrabold text-white">{dayStats.wifeExpectedWeightToday} kg</span>
+                </div>
+
+                <div className="flex-1 md:flex-none bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl text-center">
+                  <span className="text-[10px] text-blue-200 font-bold block uppercase">Sasaran Suami Hari Ini</span>
+                  <span className="text-base font-extrabold text-white">{dayStats.husbandExpectedWeightToday} kg</span>
+                </div>
+              </div>
+            </section>
+
+            {/* NAVIGATION TABS */}
+            <div className="flex overflow-x-auto space-x-2 border-b border-slate-200 pb-3 mb-6 scrollbar-none">
+              {[
+                { id: 'dashboard', label: 'Dashboard Utama', icon: Trophy },
+                { id: 'menu', label: 'Menu & Berat Makanan Harian', icon: Utensils },
+                { id: 'challenge', label: '12 Minggu Cabaran', icon: Flame },
+                { id: 'tracker', label: 'Rekod Berat & Graf', icon: Scale },
+                { id: 'daily', label: 'Log Pemakanan & Habit', icon: Apple },
+                { id: 'rewards', label: 'Ganjaran & Lencana', icon: Award },
+              ].map(tab => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
                 return (
                   <button
-                    key={idx}
-                    onClick={() => setSelectedDayMealIdx(idx)}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-semibold text-sm whitespace-nowrap transition-all ${
                       isActive 
-                        ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white border-transparent shadow' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md' 
+                        : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                     }`}
                   >
-                    {plan.dayName}
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-amber-300' : ''}`} />
+                    <span>{tab.label}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* SELECTED DAY MEAL DETAILS */}
-            {(() => {
-              const currentPlan = DAILY_MEAL_PLANS[selectedDayMealIdx];
-              const meals = [
-                { type: 'breakfast', name: 'Sarapan Pagi 🌅', data: currentPlan.breakfast },
-                { type: 'lunch', name: 'Makan Tengah Hari ☀️', data: currentPlan.lunch },
-                { type: 'dinner', name: 'Makan Malam 🌙', data: currentPlan.dinner },
-                { type: 'snack', name: 'Snek Sihat 🍎', data: currentPlan.snack },
-              ];
-
-              return (
-                <div className="space-y-6">
+            {/* TAB 1: DASHBOARD UTAMA */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   
-                  {/* Header info */}
-                  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                    <div>
-                      <span className="text-xs font-bold text-pink-600 uppercase tracking-wider">Menu Pemakanan Hari {currentPlan.dayName}</span>
-                      <h2 className="text-2xl font-extrabold text-slate-800">{currentPlan.title}</h2>
-                      <p className="text-xs text-slate-500 mt-1">Nisbah sukatan gram dikira khas mengikut sasaran berat Isteri (~1500 kcal) & Suami (~1750 kcal).</p>
+                  {/* ISTERI CARD */}
+                  <div className="bg-white rounded-3xl p-6 border-2 border-pink-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 bg-pink-500 text-white text-xs px-4 py-1.5 rounded-bl-2xl font-bold shadow-sm">
+                      ISTERI 🌸
+                    </div>
+
+                    <div className="flex items-center space-x-4 mb-4">
+                      <div className="w-14 h-14 bg-pink-100 rounded-2xl flex items-center justify-center text-3xl border border-pink-200 shadow-inner">
+                        {profiles.wife.avatar}
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-slate-800">{profiles.wife.name}</h2>
+                        <p className="text-xs text-slate-500">Tinggi: {profiles.wife.height} cm • BMI: <b className="text-slate-700">{wifeBmi}</b> (<span className={wifeBmiCat.color}>{wifeBmiCat.label}</span>)</p>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 flex items-center justify-between bg-pink-50 p-2.5 rounded-2xl border border-pink-100">
+                      <span className="text-xs text-pink-800 font-semibold">Sasaran Berat Hari Ini: <b>{dayStats.wifeExpectedWeightToday} kg</b></span>
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${getWifeStatus().bg}`}>
+                        {getWifeStatus().text}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl mb-4 border border-slate-100 text-center">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Awal</span>
+                        <span className="text-lg font-bold text-slate-700">{profiles.wife.initialWeight} <span className="text-xs font-normal">kg</span></span>
+                      </div>
+                      <div className="border-x border-slate-200">
+                        <span className="text-[10px] uppercase tracking-wider text-pink-600 font-bold block">Terkini</span>
+                        <span className="text-xl font-extrabold text-pink-600">{profiles.wife.currentWeight} <span className="text-xs font-normal">kg</span></span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-amber-600 font-bold block">Sasaran 1</span>
+                        <span className="text-lg font-bold text-slate-700">{profiles.wife.firstTarget} <span className="text-xs font-normal">kg</span></span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 mb-4">
+                      <div className="flex justify-between text-xs font-medium">
+                        <span className="text-slate-600">Pencapaian Penurunan</span>
+                        <span className="text-pink-600 font-bold">{wifeProgress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200">
+                        <div 
+                          className="bg-gradient-to-r from-pink-400 to-rose-500 h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${wifeProgress}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
+                        <span>Turun: <b>{(profiles.wife.initialWeight - profiles.wife.currentWeight).toFixed(1)} kg</b></span>
+                        <span>Sasaran Akhir: <b>{profiles.wife.finalTarget} kg</b></span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+                      <span className="text-slate-500">Mata Terkumpul:</span>
+                      <span className="px-3 py-1 bg-pink-100 text-pink-800 font-bold rounded-full border border-pink-200">
+                        ⭐ {profiles.wife.points} Pts
+                      </span>
                     </div>
                   </div>
 
-                  {/* Meals Grid */}
+                  {/* SUAMI CARD */}
+                  <div className="bg-white rounded-3xl p-6 border-2 border-blue-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 bg-blue-600 text-white text-xs px-4 py-1.5 rounded-bl-2xl font-bold shadow-sm">
+                      SUAMI 🧢
+                    </div>
+
+                    <div className="flex items-center space-x-4 mb-4">
+                      <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center text-3xl border border-blue-200 shadow-inner">
+                        {profiles.husband.avatar}
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-slate-800">{profiles.husband.name}</h2>
+                        <p className="text-xs text-slate-500">Tinggi: {profiles.husband.height} cm • BMI: <b className="text-slate-700">{husbandBmi}</b> (<span className={husbandBmiCat.color}>{husbandBmiCat.label}</span>)</p>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 flex items-center justify-between bg-blue-50 p-2.5 rounded-2xl border border-blue-100">
+                      <span className="text-xs text-blue-800 font-semibold">Sasaran Berat Hari Ini: <b>{dayStats.husbandExpectedWeightToday} kg</b></span>
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${getHusbandStatus().bg}`}>
+                        {getHusbandStatus().text}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-2xl mb-4 border border-slate-100 text-center">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">Awal</span>
+                        <span className="text-lg font-bold text-slate-700">{profiles.husband.initialWeight} <span className="text-xs font-normal">kg</span></span>
+                      </div>
+                      <div className="border-x border-slate-200">
+                        <span className="text-[10px] uppercase tracking-wider text-blue-600 font-bold block">Terkini</span>
+                        <span className="text-xl font-extrabold text-blue-600">{profiles.husband.currentWeight} <span className="text-xs font-normal">kg</span></span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-amber-600 font-bold block">Sasaran 1</span>
+                        <span className="text-lg font-bold text-slate-700">{profiles.husband.firstTarget} <span className="text-xs font-normal">kg</span></span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 mb-4">
+                      <div className="flex justify-between text-xs font-medium">
+                        <span className="text-slate-600">Pencapaian Penurunan</span>
+                        <span className="text-blue-600 font-bold">{husbandProgress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200">
+                        <div 
+                          className="bg-gradient-to-r from-blue-400 to-indigo-600 h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${husbandProgress}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
+                        <span>Turun: <b>{(profiles.husband.initialWeight - profiles.husband.currentWeight).toFixed(1)} kg</b></span>
+                        <span>Sasaran Akhir: <b>{profiles.husband.finalTarget} kg</b></span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-3 border-t border-slate-100">
+                      <span className="text-slate-500">Mata Terkumpul:</span>
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 font-bold rounded-full border border-blue-200">
+                        ⭐ {profiles.husband.points} Pts
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                  <div className="text-xs text-slate-600 flex items-center space-x-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span><b>Tip Perjalanan:</b> Konsistensi kecil setiap hari membawa perubahan besar dalam 90 hari!</span>
+                  </div>
+                  <button
+                    onClick={() => setShowEditTargetModal(true)}
+                    className="px-3.5 py-2 bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-200 shadow-sm flex items-center space-x-1.5"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Selasar Sasaran Berat</span>
+                  </button>
+                </div>
+
+                <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white rounded-3xl p-6 shadow-md relative overflow-hidden">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                    <div>
+                      <span className="px-3 py-1 bg-pink-500 text-white font-bold text-xs rounded-full uppercase tracking-wider inline-block mb-2 shadow">
+                        Cabaran Minggu Semasa ({currentWeekNum}/12)
+                      </span>
+                      <h3 className="text-2xl font-bold">{CHALLENGE_WEEKS[currentWeekNum - 1].title}</h3>
+                      <p className="text-sm text-blue-100 mt-1">{CHALLENGE_WEEKS[currentWeekNum - 1].objective}</p>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('challenge')}
+                      className="px-5 py-2.5 bg-white text-blue-800 font-bold text-xs rounded-xl shadow hover:bg-slate-100 flex items-center justify-center space-x-1 self-start md:self-auto"
+                    >
+                      <span>Buka Checklist Minggu Ini</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 text-xs text-blue-50 flex items-start space-x-3">
+                    <Sparkles className="w-5 h-5 text-amber-300 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <b className="text-white block mb-0.5">Tip Kebijaksanaan Pasangan:</b>
+                      {CHALLENGE_WEEKS[currentWeekNum - 1].tip}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 2: MENU & BERAT MAKANAN HARIAN */}
+            {activeTab === 'menu' && (
+              <div className="space-y-6">
+                <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
+                  {DAILY_MEAL_PLANS.map((plan, idx) => {
+                    const isActive = idx === selectedDayMealIdx;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedDayMealIdx(idx)}
+                        className={`px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                          isActive 
+                            ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white border-transparent shadow' 
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        {plan.dayName}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {(() => {
+                  const currentPlan = DAILY_MEAL_PLANS[selectedDayMealIdx];
+                  const meals = [
+                    { type: 'breakfast', name: 'Sarapan Pagi 🌅', data: currentPlan.breakfast },
+                    { type: 'lunch', name: 'Makan Tengah Hari ☀️', data: currentPlan.lunch },
+                    { type: 'dinner', name: 'Makan Malam 🌙', data: currentPlan.dinner },
+                    { type: 'snack', name: 'Snek Sihat 🍎', data: currentPlan.snack },
+                  ];
+
+                  return (
+                    <div className="space-y-6">
+                      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div>
+                          <span className="text-xs font-bold text-pink-600 uppercase tracking-wider">Menu Pemakanan Hari {currentPlan.dayName}</span>
+                          <h2 className="text-2xl font-extrabold text-slate-800">{currentPlan.title}</h2>
+                          <p className="text-xs text-slate-500 mt-1">Nisbah sukatan gram dikira khas mengikut sasaran berat Isteri (~1500 kcal) & Suami (~1750 kcal).</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {meals.map((m) => {
+                          const isCompleted = !!dailyHabits.completedMeals?.[`day-${selectedDayMealIdx}-${m.type}`];
+
+                          return (
+                            <div key={m.type} className={`bg-white rounded-3xl p-6 border transition-all shadow-sm space-y-4 ${
+                              isCompleted ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200'
+                            }`}>
+                              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                                <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
+                                  <span>{m.name}</span>
+                                </h3>
+                                <button
+                                  onClick={() => handleMealToggle(m.type)}
+                                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                    isCompleted 
+                                      ? 'bg-emerald-600 text-white' 
+                                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                                  <span>{isCompleted ? 'Selesai' : 'Tanda Selesai'}</span>
+                                </button>
+                              </div>
+
+                              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs font-bold text-slate-700">
+                                🥗 Menu: {m.data.menu}
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                <div className="bg-pink-50/70 p-3.5 rounded-2xl border border-pink-100 space-y-1">
+                                  <span className="text-[11px] font-bold text-pink-700 flex items-center gap-1">
+                                    <span>👩‍🍳</span> Sukatan Isteri:
+                                  </span>
+                                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                                    {m.data.wifePortion}
+                                  </p>
+                                </div>
+
+                                <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-100 space-y-1">
+                                  <span className="text-[11px] font-bold text-blue-700 flex items-center gap-1">
+                                    <span>👨‍💻</span> Sukatan Suami:
+                                  </span>
+                                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                                    {m.data.husbandPortion}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+              </div>
+            )}
+
+            {/* TAB 3: 12 MINGGU CABARAN */}
+            {activeTab === 'challenge' && (
+              <div className="space-y-6">
+                <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
+                  {CHALLENGE_WEEKS.map((w) => {
+                    const isActive = w.week === currentWeekNum;
+                    return (
+                      <button
+                        key={w.week}
+                        onClick={() => setCurrentWeekNum(w.week)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                          isActive 
+                            ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white border-transparent shadow scale-105' 
+                            : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        Minggu {w.week}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {(() => {
+                  const weekData = CHALLENGE_WEEKS[currentWeekNum - 1];
+                  const days = ["Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu", "Ahad"];
+
+                  return (
+                    <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
+                      <div className="border-b border-slate-100 pb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-pink-600 uppercase tracking-wider">Modul {weekData.week} daripada 12</span>
+                          <span className="text-xs px-3 py-1 bg-amber-50 text-amber-800 font-bold rounded-full border border-amber-200">
+                            +10 Mata setiap tugasan
+                          </span>
+                        </div>
+                        <h2 className="text-2xl font-extrabold text-slate-800">{weekData.title}</h2>
+                        <p className="text-sm text-slate-600 mt-1"><b>Objektif:</b> {weekData.objective}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{weekData.description}</p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                          <CheckCircle2 className="w-5 h-5 text-blue-600" />
+                          <span>Checklist Tugasan Harian (Isnin - Ahad)</span>
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {weekData.dailyTasks.map((task, idx) => {
+                            const wifeKey = `week-${weekData.week}-day-${idx}-wife`;
+                            const husbKey = `week-${weekData.week}-day-${idx}-husband`;
+                            const isWifeChecked = !!checklist[wifeKey];
+                            const isHusbChecked = !!checklist[husbKey];
+
+                            return (
+                              <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-between space-y-3">
+                                <div className="flex items-start justify-between space-x-2">
+                                  <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold rounded uppercase">
+                                    {days[idx]}
+                                  </span>
+                                  <span className="text-xs text-slate-700 font-medium flex-1 text-right">{task}</span>
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
+                                  <button
+                                    onClick={() => handleTaskToggle(weekData.week, idx, 'wife')}
+                                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                                      isWifeChecked 
+                                        ? 'bg-pink-500 text-white shadow-sm' 
+                                        : 'bg-white text-slate-500 border border-slate-200 hover:bg-pink-50'
+                                    }`}
+                                  >
+                                    {isWifeChecked ? <Check className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                                    <span>Isteri</span>
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleTaskToggle(weekData.week, idx, 'husband')}
+                                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                                      isHusbChecked 
+                                        ? 'bg-blue-600 text-white shadow-sm' 
+                                        : 'bg-white text-slate-500 border border-slate-200 hover:bg-blue-50'
+                                    }`}
+                                  >
+                                    {isHusbChecked ? <Check className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
+                                    <span>Suami</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-start space-x-3">
+                        <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <b className="block font-bold text-amber-950 mb-0.5">Tip Mingguan Pasangan:</b>
+                          {weekData.tip}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-2">
+                        <label className="block text-xs font-bold text-slate-700">
+                          📝 Catatan Refleksi Mingguan (Isteri & Suami):
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={reflections[`week-${weekData.week}`] || ''}
+                          onChange={(e) => setReflections({ ...reflections, [`week-${weekData.week}`]: e.target.value })}
+                          placeholder="Tulis perasaan, cabaran, atau pencapaian manis korang berdua minggu ini..."
+                          className="w-full p-3 text-xs bg-slate-50 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
+                        />
+                      </div>
+
+                    </div>
+                  );
+                })()}
+
+              </div>
+            )}
+
+            {/* TAB 4: REKOD BERAT & GRAF */}
+            {activeTab === 'tracker' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center space-x-2">
+                    <Plus className="w-5 h-5 text-pink-500" />
+                    <span>Tambah Rekod Timbangan Baru</span>
+                  </h3>
+
+                  <form onSubmit={handleAddWeightLog} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Tarikh Rekod</label>
+                      <input
+                        type="date"
+                        required
+                        value={newLog.date}
+                        onChange={(e) => setNewLog({ ...newLog, date: e.target.value })}
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-pink-600 font-bold mb-1">Berat Isteri (kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        required
+                        value={newLog.wifeWeight}
+                        onChange={(e) => setNewLog({ ...newLog, wifeWeight: e.target.value })}
+                        className="w-full px-3 py-2 text-xs border border-pink-300 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-blue-600 font-bold mb-1">Berat Suami (kg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        required
+                        value={newLog.husbandWeight}
+                        onChange={(e) => setNewLog({ ...newLog, husbandWeight: e.target.value })}
+                        className="w-full px-3 py-2 text-xs border border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Nota Singkat</label>
+                      <input
+                        type="text"
+                        placeholder="Contoh: Selepas senaman"
+                        value={newLog.note}
+                        onChange={(e) => setNewLog({ ...newLog, note: e.target.value })}
+                        className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2 md:col-span-4 flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-pink-500 text-white font-bold text-xs rounded-xl shadow hover:opacity-95 transition-all flex items-center space-x-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>Simpan Rekod Berat</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-800">Visual Trend Penurunan Berat</h3>
+                      <p className="text-xs text-slate-500">Rekod kemajuan timbangan semasa pasangan</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                    {weightLogs.slice(-4).map((log, i) => (
+                      <div key={i} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">{log.date}</span>
+                          <p className="text-xs text-slate-600 font-medium">{log.note || 'Timbangan Rutin'}</p>
+                        </div>
+                        <div className="flex space-x-3 text-xs font-extrabold">
+                          <span className="text-pink-600 bg-pink-50 px-2.5 py-1 rounded-lg border border-pink-100">👩‍🍳 {log.wifeWeight} kg</span>
+                          <span className="text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">👨‍💻 {log.husbandWeight} kg</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm overflow-hidden">
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">Sejarah Rekod Timbangan</h3>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                          <th className="p-3">Tarikh</th>
+                          <th className="p-3">Berat Isteri</th>
+                          <th className="p-3">Berat Suami</th>
+                          <th className="p-3">Nota</th>
+                          <th className="p-3 text-center">Tindakan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {weightLogs.map((log, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/60">
+                            <td className="p-3 font-semibold text-slate-700">{log.date}</td>
+                            <td className="p-3 text-pink-600 font-bold">{log.wifeWeight} kg</td>
+                            <td className="p-3 text-blue-600 font-bold">{log.husbandWeight} kg</td>
+                            <td className="p-3 text-slate-500">{log.note || '-'}</td>
+                            <td className="p-3 text-center">
+                              <button
+                                onClick={() => handleDeleteWeightLog(idx)}
+                                className="p-1 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-all"
+                                title="Padam Rekod"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 5: LOG PEMAKANAN & HABIT */}
+            {activeTab === 'daily' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-slate-800 mb-1 flex items-center space-x-2">
+                    <Droplet className="w-5 h-5 text-blue-500" />
+                    <span>Water Intake Tracker (Gelas Air Harian)</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-6">Sasaran: 8 - 10 Gelas (2.5L - 3.5L) sehari setiap orang</p>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {meals.map((m) => {
-                      const isCompleted = !!dailyHabits.completedMeals?.[`day-${selectedDayMealIdx}-${m.type}`];
+                    <div className="bg-pink-50/50 p-5 rounded-2xl border border-pink-100 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                          <span>👩‍🍳</span> Isteri
+                        </span>
+                        <span className="text-xs font-bold text-pink-600 bg-white px-2.5 py-1 rounded-full border border-pink-200">
+                          {dailyHabits.wifeWater} Gelas ({(dailyHabits.wifeWater * 0.35).toFixed(1)}L)
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2 justify-center py-2">
+                        <button
+                          onClick={() => setDailyHabits({ ...dailyHabits, wifeWater: Math.max(0, dailyHabits.wifeWater - 1) })}
+                          className="w-8 h-8 rounded-full bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100"
+                        >
+                          -
+                        </button>
+                        <div className="flex space-x-1 overflow-x-auto max-w-[200px] px-1">
+                          {Array.from({ length: Math.min(10, dailyHabits.wifeWater) }).map((_, i) => (
+                            <Droplet key={i} className="w-5 h-5 text-pink-500 fill-pink-400 flex-shrink-0" />
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => setDailyHabits({ ...dailyHabits, wifeWater: dailyHabits.wifeWater + 1 })}
+                          className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-bold hover:bg-pink-600"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                          <span>👨‍💻</span> Suami
+                        </span>
+                        <span className="text-xs font-bold text-blue-600 bg-white px-2.5 py-1 rounded-full border border-blue-200">
+                          {dailyHabits.husbandWater} Gelas ({(dailyHabits.husbandWater * 0.35).toFixed(1)}L)
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2 justify-center py-2">
+                        <button
+                          onClick={() => setDailyHabits({ ...dailyHabits, husbandWater: Math.max(0, dailyHabits.husbandWater - 1) })}
+                          className="w-8 h-8 rounded-full bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100"
+                        >
+                          -
+                        </button>
+                        <div className="flex space-x-1 overflow-x-auto max-w-[200px] px-1">
+                          {Array.from({ length: Math.min(10, dailyHabits.husbandWater) }).map((_, i) => (
+                            <Droplet key={i} className="w-5 h-5 text-blue-500 fill-blue-400 flex-shrink-0" />
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => setDailyHabits({ ...dailyHabits, husbandWater: dailyHabits.husbandWater + 1 })}
+                          className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold hover:bg-blue-700"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                    <Apple className="w-5 h-5 text-emerald-600" />
+                    <span>Anggaran Kalori Harian</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-pink-50/40 p-4 rounded-2xl border border-pink-100">
+                      <label className="block text-xs font-semibold text-pink-700 mb-1">Anggaran Kalori Isteri (kcal)</label>
+                      <input
+                        type="number"
+                        value={dailyHabits.wifeCalories}
+                        onChange={(e) => setDailyHabits({ ...dailyHabits, wifeCalories: parseInt(e.target.value) || 0 })}
+                        className="w-full p-2.5 text-sm bg-white border border-pink-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100">
+                      <label className="block text-xs font-semibold text-blue-700 mb-1">Anggaran Kalori Suami (kcal)</label>
+                      <input
+                        type="number"
+                        value={dailyHabits.husbandCalories}
+                        onChange={(e) => setDailyHabits({ ...dailyHabits, husbandCalories: parseInt(e.target.value) || 0 })}
+                        className="w-full p-2.5 text-sm bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center space-x-2">
+                    <Dumbbell className="w-5 h-5 text-amber-500" />
+                    <span>Log Senaman Bersama (Couple Workout)</span>
+                  </h3>
+
+                  <div className="space-y-3">
+                    <label className="block text-xs font-medium text-slate-600">Aktiviti Senaman / Sukan Hari Ini:</label>
+                    <textarea
+                      rows={3}
+                      value={dailyHabits.workoutNotes}
+                      onChange={(e) => setDailyHabits({ ...dailyHabits, workoutNotes: e.target.value })}
+                      placeholder="Contoh: Berjalan santai 30 minit di tasik + Stretching 10 minit bersama..."
+                      className="w-full p-3 text-xs bg-slate-50 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* TAB 6: GANJARAN & LENCANA */}
+            {activeTab === 'rewards' && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+                  <div className="mb-6">
+                    <h3 className="text-lg font-bold text-slate-800">Lencana Pencapaian Pasangan</h3>
+                    <p className="text-xs text-slate-500">Lencana akan dibuka secara automatik mengikut kemajuan dan pencapaian korang!</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {INITIAL_BADGES.map((badge) => {
+                      const isUnlocked = badge.requirement(profiles, weightLogs, currentWeekNum);
 
                       return (
-                        <div key={m.type} className={`bg-white rounded-3xl p-6 border transition-all shadow-sm space-y-4 ${
-                          isCompleted ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200'
-                        }`}>
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <h3 className="font-bold text-base text-slate-800 flex items-center gap-2">
-                              <span>{m.name}</span>
-                            </h3>
-                            <button
-                              onClick={() => handleMealToggle(m.type)}
-                              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                                isCompleted 
-                                  ? 'bg-emerald-600 text-white' 
-                                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                              }`}
-                            >
-                              {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
-                              <span>{isCompleted ? 'Selesai' : 'Tanda Selesai'}</span>
-                            </button>
+                        <div 
+                          key={badge.id} 
+                          className={`p-4 rounded-2xl border transition-all flex items-start space-x-3 ${
+                            isUnlocked 
+                              ? 'bg-gradient-to-r from-amber-50 to-pink-50 border-amber-300 shadow-sm' 
+                              : 'bg-slate-50 border-slate-200 opacity-50 grayscale'
+                          }`}
+                        >
+                          <div className="text-3xl p-2 bg-white rounded-xl shadow-sm border border-slate-100 flex-shrink-0">
+                            {badge.icon}
                           </div>
-
-                          {/* Menu Item Name */}
-                          <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs font-bold text-slate-700">
-                            🥗 Menu: {m.data.menu}
-                          </div>
-
-                          {/* Portion Weights Comparison */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                            
-                            {/* Wife Portion - Pink */}
-                            <div className="bg-pink-50/70 p-3.5 rounded-2xl border border-pink-100 space-y-1">
-                              <span className="text-[11px] font-bold text-pink-700 flex items-center gap-1">
-                                <span>👩‍🍳</span> Sukatan Isteri:
-                              </span>
-                              <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                                {m.data.wifePortion}
-                              </p>
+                          <div>
+                            <div className="flex items-center space-x-1.5">
+                              <h4 className="font-bold text-sm text-slate-800">{badge.title}</h4>
+                              {isUnlocked && <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />}
                             </div>
-
-                            {/* Husband Portion - Blue */}
-                            <div className="bg-blue-50/70 p-3.5 rounded-2xl border border-blue-100 space-y-1">
-                              <span className="text-[11px] font-bold text-blue-700 flex items-center gap-1">
-                                <span>👨‍💻</span> Sukatan Suami:
-                              </span>
-                              <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                                {m.data.husbandPortion}
-                              </p>
-                            </div>
-
+                            <p className="text-xs text-slate-500 mt-0.5">{badge.desc}</p>
+                            <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isUnlocked ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {isUnlocked ? 'Telah Terbuka 🎉' : 'Terkunci 🔒'}
+                            </span>
                           </div>
                         </div>
                       );
                     })}
                   </div>
-
                 </div>
-              );
-            })()}
 
-          </div>
-        )}
+                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+                  <h3 className="text-lg font-bold text-slate-800">Pengurusan Data & Cadangan Back-up</h3>
+                  <p className="text-xs text-slate-500">Semua rekod anda disimpan dengan selamat dalam peranti anda melalui LocalStorage.</p>
 
-        {/* ==================== TAB 3: 12 MINGGU CABARAN ==================== */}
-        {activeTab === 'challenge' && (
-          <div className="space-y-6">
-            
-            {/* WEEK SELECTOR */}
-            <div className="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none">
-              {CHALLENGE_WEEKS.map((w) => {
-                const isActive = w.week === currentWeekNum;
-                return (
-                  <button
-                    key={w.week}
-                    onClick={() => setCurrentWeekNum(w.week)}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
-                      isActive 
-                        ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white border-transparent shadow scale-105' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Minggu {w.week}
-                  </button>
-                );
-              })}
-            </div>
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    <button
+                      onClick={handleExportData}
+                      className="px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-500 text-white font-bold text-xs rounded-xl shadow hover:opacity-95 flex items-center space-x-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>Muat Turun Data (Export JSON)</span>
+                    </button>
 
-            {/* SELECTED WEEK MODULE DETAIL */}
-            {(() => {
-              const weekData = CHALLENGE_WEEKS[currentWeekNum - 1];
-              const days = ["Isnin", "Selasa", "Rabu", "Khamis", "Jumaat", "Sabtu", "Ahad"];
-
-              return (
-                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-6">
-                  
-                  {/* Module Header */}
-                  <div className="border-b border-slate-100 pb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-pink-600 uppercase tracking-wider">Modul {weekData.week} daripada 12</span>
-                      <span className="text-xs px-3 py-1 bg-amber-50 text-amber-800 font-bold rounded-full border border-amber-200">
-                        +10 Mata setiap tugasan
-                      </span>
-                    </div>
-                    <h2 className="text-2xl font-extrabold text-slate-800">{weekData.title}</h2>
-                    <p className="text-sm text-slate-600 mt-1"><b>Objektif:</b> {weekData.objective}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{weekData.description}</p>
+                    <button
+                      onClick={() => setShowResetModal(true)}
+                      className="px-4 py-2 bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl hover:bg-rose-100 flex items-center space-x-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Reset Semua Data (Mula Semula)</span>
+                    </button>
                   </div>
-
-                  {/* Daily Interactive Checklist */}
-                  <div className="space-y-4">
-                    <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-blue-600" />
-                      <span>Checklist Tugasan Harian (Isnin - Ahad)</span>
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {weekData.dailyTasks.map((task, idx) => {
-                        const wifeKey = `week-${weekData.week}-day-${idx}-wife`;
-                        const husbKey = `week-${weekData.week}-day-${idx}-husband`;
-                        const isWifeChecked = !!checklist[wifeKey];
-                        const isHusbChecked = !!checklist[husbKey];
-
-                        return (
-                          <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col justify-between space-y-3">
-                            <div className="flex items-start justify-between space-x-2">
-                              <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold rounded uppercase">
-                                {days[idx]}
-                              </span>
-                              <span className="text-xs text-slate-700 font-medium flex-1 text-right">{task}</span>
-                            </div>
-
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-200/60">
-                              {/* Wife Toggle - Pink Theme */}
-                              <button
-                                onClick={() => handleTaskToggle(weekData.week, idx, 'wife')}
-                                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                                  isWifeChecked 
-                                    ? 'bg-pink-500 text-white shadow-sm' 
-                                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-pink-50'
-                                }`}
-                              >
-                                {isWifeChecked ? <Check className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
-                                <span>Isteri</span>
-                              </button>
-
-                              {/* Husband Toggle - Blue Theme */}
-                              <button
-                                onClick={() => handleTaskToggle(weekData.week, idx, 'husband')}
-                                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                                  isHusbChecked 
-                                    ? 'bg-blue-600 text-white shadow-sm' 
-                                    : 'bg-white text-slate-500 border border-slate-200 hover:bg-blue-50'
-                                }`}
-                              >
-                                {isHusbChecked ? <Check className="w-3.5 h-3.5" /> : <Circle className="w-3.5 h-3.5" />}
-                                <span>Suami</span>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Weekly Tip Card */}
-                  <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 text-xs text-amber-900 flex items-start space-x-3">
-                    <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <b className="block font-bold text-amber-950 mb-0.5">Tip Mingguan Pasangan:</b>
-                      {weekData.tip}
-                    </div>
-                  </div>
-
-                  {/* Weekly Reflection Input */}
-                  <div className="space-y-2 pt-2">
-                    <label className="block text-xs font-bold text-slate-700">
-                      📝 Catatan Refleksi Mingguan (Isteri & Suami):
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={reflections[`week-${weekData.week}`] || ''}
-                      onChange={(e) => setReflections({ ...reflections, [`week-${weekData.week}`]: e.target.value })}
-                      placeholder="Tulis perasaan, cabaran, atau pencapaian manis korang berdua minggu ini..."
-                      className="w-full p-3 text-xs bg-slate-50 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                    />
-                  </div>
-
-                </div>
-              );
-            })()}
-
-          </div>
-        )}
-
-        {/* ==================== TAB 4: REKOD BERAT & GRAF ==================== */}
-        {activeTab === 'tracker' && (
-          <div className="space-y-6">
-            
-            {/* ADD WEIGHT LOG FORM */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center space-x-2">
-                <Plus className="w-5 h-5 text-pink-500" />
-                <span>Tambah Rekod Timbangan Baru</span>
-              </h3>
-
-              <form onSubmit={handleAddWeightLog} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Tarikh Rekod</label>
-                  <input
-                    type="date"
-                    required
-                    value={newLog.date}
-                    onChange={(e) => setNewLog({ ...newLog, date: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-pink-600 font-bold mb-1">Berat Isteri (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={newLog.wifeWeight}
-                    onChange={(e) => setNewLog({ ...newLog, wifeWeight: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-pink-300 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-blue-600 font-bold mb-1">Berat Suami (kg)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    required
-                    value={newLog.husbandWeight}
-                    onChange={(e) => setNewLog({ ...newLog, husbandWeight: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-blue-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Nota Singkat</label>
-                  <input
-                    type="text"
-                    placeholder="Contoh: Selepas senaman"
-                    value={newLog.note}
-                    onChange={(e) => setNewLog({ ...newLog, note: e.target.value })}
-                    className="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-
-                <div className="sm:col-span-2 md:col-span-4 flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-pink-500 text-white font-bold text-xs rounded-xl shadow hover:opacity-95 transition-all flex items-center space-x-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Simpan Rekod Berat</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* WEIGHT PROGRESS CHART */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800">Graf Trend Penurunan Berat Badan</h3>
-                  <p className="text-xs text-slate-500">Perbandingan pergerakan berat Isteri (Pink) vs Suami (Biru)</p>
-                </div>
-                <div className="flex items-center space-x-3 text-xs">
-                  <span className="flex items-center gap-1 font-semibold text-pink-500">
-                    <span className="w-3 h-3 rounded-full bg-pink-500 inline-block"></span> Isteri
-                  </span>
-                  <span className="flex items-center gap-1 font-semibold text-blue-600">
-                    <span className="w-3 h-3 rounded-full bg-blue-600 inline-block"></span> Suami
-                  </span>
-                </div>
               </div>
+            )}
 
-              <div className="h-72 w-full pt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={weightLogs} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <YAxis domain={['auto', 'auto']} tick={{ fontSize: 11, fill: '#64748b' }} />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '12px' }}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }} />
-                    <Line type="monotone" dataKey="wifeWeight" name="Isteri (kg)" stroke="#ec4899" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                    <Line type="monotone" dataKey="husbandWeight" name="Suami (kg)" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
+          </main>
 
-            {/* WEIGHT LOG TABLE */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm overflow-hidden">
-              <h3 className="text-lg font-bold text-slate-800 mb-4">Sejarah Rekod Timbangan</h3>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
-                      <th className="p-3">Tarikh</th>
-                      <th className="p-3">Berat Isteri</th>
-                      <th className="p-3">Berat Suami</th>
-                      <th className="p-3">Nota</th>
-                      <th className="p-3 text-center">Tindakan</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {weightLogs.map((log, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/60">
-                        <td className="p-3 font-semibold text-slate-700">{log.date}</td>
-                        <td className="p-3 text-pink-600 font-bold">{log.wifeWeight} kg</td>
-                        <td className="p-3 text-blue-600 font-bold">{log.husbandWeight} kg</td>
-                        <td className="p-3 text-slate-500">{log.note || '-'}</td>
-                        <td className="p-3 text-center">
-                          <button
-                            onClick={() => handleDeleteWeightLog(idx)}
-                            className="p-1 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-all"
-                            title="Padam Rekod"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* ==================== TAB 5: LOG PEMAKANAN & HABIT ==================== */}
-        {activeTab === 'daily' && (
-          <div className="space-y-6">
-            
-            {/* WATER TRACKER SECTION */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 mb-1 flex items-center space-x-2">
-                <Droplet className="w-5 h-5 text-blue-500" />
-                <span>Water Intake Tracker (Gelas Air Harian)</span>
-              </h3>
-              <p className="text-xs text-slate-500 mb-6">Sasaran: 8 - 10 Gelas (2.5L - 3.5L) sehari setiap orang</p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* EDIT TARGET MODAL */}
+          {showEditTargetModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
+                <h3 className="text-lg font-bold text-slate-800">Selasar Sasaran Berat Badan</h3>
                 
-                {/* Wife Water - Pink Theme */}
-                <div className="bg-pink-50/50 p-5 rounded-2xl border border-pink-100 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
-                      <span>👩‍🍳</span> Isteri
-                    </span>
-                    <span className="text-xs font-bold text-pink-600 bg-white px-2.5 py-1 rounded-full border border-pink-200">
-                      {dailyHabits.wifeWater} Gelas ({(dailyHabits.wifeWater * 0.35).toFixed(1)}L)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center space-x-2 justify-center py-2">
-                    <button
-                      onClick={() => setDailyHabits({ ...dailyHabits, wifeWater: Math.max(0, dailyHabits.wifeWater - 1) })}
-                      className="w-8 h-8 rounded-full bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100"
-                    >
-                      -
-                    </button>
-                    <div className="flex space-x-1 overflow-x-auto max-w-[200px] px-1">
-                      {Array.from({ length: Math.min(10, dailyHabits.wifeWater) }).map((_, i) => (
-                        <Droplet key={i} className="w-5 h-5 text-pink-500 fill-pink-400 flex-shrink-0" />
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setDailyHabits({ ...dailyHabits, wifeWater: dailyHabits.wifeWater + 1 })}
-                      className="w-8 h-8 rounded-full bg-pink-500 text-white flex items-center justify-center font-bold hover:bg-pink-600"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                {/* Husband Water - Blue Theme */}
-                <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
-                      <span>👨‍💻</span> Suami
-                    </span>
-                    <span className="text-xs font-bold text-blue-600 bg-white px-2.5 py-1 rounded-full border border-blue-200">
-                      {dailyHabits.husbandWater} Gelas ({(dailyHabits.husbandWater * 0.35).toFixed(1)}L)
-                    </span>
-                  </div>
-
-                  <div className="flex items-center space-x-2 justify-center py-2">
-                    <button
-                      onClick={() => setDailyHabits({ ...dailyHabits, husbandWater: Math.max(0, dailyHabits.husbandWater - 1) })}
-                      className="w-8 h-8 rounded-full bg-white border border-slate-300 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100"
-                    >
-                      -
-                    </button>
-                    <div className="flex space-x-1 overflow-x-auto max-w-[200px] px-1">
-                      {Array.from({ length: Math.min(10, dailyHabits.husbandWater) }).map((_, i) => (
-                        <Droplet key={i} className="w-5 h-5 text-blue-500 fill-blue-400 flex-shrink-0" />
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setDailyHabits({ ...dailyHabits, husbandWater: dailyHabits.husbandWater + 1 })}
-                      className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold hover:bg-blue-700"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* CALORIE & MEAL SUMMARY */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-lg font-bold text-slate-800 flex items-center space-x-2">
-                <Apple className="w-5 h-5 text-emerald-600" />
-                <span>Anggaran Kalori Harian</span>
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-pink-50/40 p-4 rounded-2xl border border-pink-100">
-                  <label className="block text-xs font-semibold text-pink-700 mb-1">Anggaran Kalori Isteri (kcal)</label>
-                  <input
-                    type="number"
-                    value={dailyHabits.wifeCalories}
-                    onChange={(e) => setDailyHabits({ ...dailyHabits, wifeCalories: parseInt(e.target.value) || 0 })}
-                    className="w-full p-2.5 text-sm bg-white border border-pink-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none"
-                  />
-                </div>
-
-                <div className="bg-blue-50/40 p-4 rounded-2xl border border-blue-100">
-                  <label className="block text-xs font-semibold text-blue-700 mb-1">Anggaran Kalori Suami (kcal)</label>
-                  <input
-                    type="number"
-                    value={dailyHabits.husbandCalories}
-                    onChange={(e) => setDailyHabits({ ...dailyHabits, husbandCalories: parseInt(e.target.value) || 0 })}
-                    className="w-full p-2.5 text-sm bg-white border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* WORKOUT LOG */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-lg font-bold text-slate-800 flex items-center space-x-2">
-                <Dumbbell className="w-5 h-5 text-amber-500" />
-                <span>Log Senaman Bersama (Couple Workout)</span>
-              </h3>
-
-              <div className="space-y-3">
-                <label className="block text-xs font-medium text-slate-600">Aktiviti Senaman / Sukan Hari Ini:</label>
-                <textarea
-                  rows={3}
-                  value={dailyHabits.workoutNotes}
-                  onChange={(e) => setDailyHabits({ ...dailyHabits, workoutNotes: e.target.value })}
-                  placeholder="Contoh: Berjalan santai 30 minit di tasik + Stretching 10 minit bersama..."
-                  className="w-full p-3 text-xs bg-slate-50 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-              </div>
-            </div>
-
-          </div>
-        )}
-
-        {/* ==================== TAB 6: GANJARAN & LENCANA ==================== */}
-        {activeTab === 'rewards' && (
-          <div className="space-y-6">
-            
-            {/* BADGES GRID */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
-              <div className="mb-6">
-                <h3 className="text-lg font-bold text-slate-800">Lencana Pencapaian Pasangan</h3>
-                <p className="text-xs text-slate-500">Lencana akan dibuka secara automatik mengikut kemajuan dan pencapaian korang!</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {INITIAL_BADGES.map((badge) => {
-                  const isUnlocked = badge.requirement(profiles, weightLogs, currentWeekNum);
-
-                  return (
-                    <div 
-                      key={badge.id} 
-                      className={`p-4 rounded-2xl border transition-all flex items-start space-x-3 ${
-                        isUnlocked 
-                          ? 'bg-gradient-to-r from-amber-50 to-pink-50 border-amber-300 shadow-sm' 
-                          : 'bg-slate-50 border-slate-200 opacity-50 grayscale'
-                      }`}
-                    >
-                      <div className="text-3xl p-2 bg-white rounded-xl shadow-sm border border-slate-100 flex-shrink-0">
-                        {badge.icon}
+                <div className="space-y-3">
+                  <div className="p-3 bg-pink-50 rounded-2xl border border-pink-100 space-y-2">
+                    <span className="text-xs font-bold text-pink-700 block">ISTERI 🌸</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium">Sasaran 1 (kg)</label>
+                        <input 
+                          type="number" 
+                          value={editTargetData.wifeFirst}
+                          onChange={(e) => setEditTargetData({ ...editTargetData, wifeFirst: e.target.value })}
+                          className="w-full p-2 text-xs border rounded-xl"
+                        />
                       </div>
                       <div>
-                        <div className="flex items-center space-x-1.5">
-                          <h4 className="font-bold text-sm text-slate-800">{badge.title}</h4>
-                          {isUnlocked && <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />}
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">{badge.desc}</p>
-                        <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isUnlocked ? 'bg-amber-200 text-amber-900' : 'bg-slate-200 text-slate-600'
-                        }`}>
-                          {isUnlocked ? 'Telah Terbuka 🎉' : 'Terkunci 🔒'}
-                        </span>
+                        <label className="text-[10px] text-slate-500 font-medium">Target Akhir 90 Hari (kg)</label>
+                        <input 
+                          type="number" 
+                          value={editTargetData.wifeFinal}
+                          onChange={(e) => setEditTargetData({ ...editTargetData, wifeFinal: e.target.value })}
+                          className="w-full p-2 text-xs border rounded-xl"
+                        />
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* DATA MANAGEMENT SECTION */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="text-lg font-bold text-slate-800">Pengurusan Data & Cadangan Back-up</h3>
-              <p className="text-xs text-slate-500">Semua rekod anda disimpan dengan selamat dalam peranti anda melalui LocalStorage.</p>
-
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  onClick={handleExportData}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-500 text-white font-bold text-xs rounded-xl shadow hover:opacity-95 flex items-center space-x-2"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Muat Turun Data (Export JSON)</span>
-                </button>
-
-                <button
-                  onClick={() => setShowResetModal(true)}
-                  className="px-4 py-2 bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl hover:bg-rose-100 flex items-center space-x-2"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Reset Semua Data (Mula Semula)</span>
-                </button>
-              </div>
-            </div>
-
-          </div>
-        )}
-
-      </main>
-
-      {/* ==================== EDIT TARGET MODAL ==================== */}
-      {showEditTargetModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95">
-            <h3 className="text-lg font-bold text-slate-800">Selasar Sasaran Berat Badan</h3>
-            
-            <div className="space-y-3">
-              <div className="p-3 bg-pink-50 rounded-2xl border border-pink-100 space-y-2">
-                <span className="text-xs font-bold text-pink-700 block">ISTERI 🌸</span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium">Sasaran 1 (kg)</label>
-                    <input 
-                      type="number" 
-                      value={editTargetData.wifeFirst}
-                      onChange={(e) => setEditTargetData({ ...editTargetData, wifeFirst: e.target.value })}
-                      className="w-full p-2 text-xs border rounded-xl"
-                    />
                   </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium">Target Akhir 90 Hari (kg)</label>
-                    <input 
-                      type="number" 
-                      value={editTargetData.wifeFinal}
-                      onChange={(e) => setEditTargetData({ ...editTargetData, wifeFinal: e.target.value })}
-                      className="w-full p-2 text-xs border rounded-xl"
-                    />
+
+                  <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100 space-y-2">
+                    <span className="text-xs font-bold text-blue-700 block">SUAMI 🧢</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium">Sasaran 1 (kg)</label>
+                        <input 
+                          type="number" 
+                          value={editTargetData.husbandFirst}
+                          onChange={(e) => setEditTargetData({ ...editTargetData, husbandFirst: e.target.value })}
+                          className="w-full p-2 text-xs border rounded-xl"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-slate-500 font-medium">Target Akhir 90 Hari (kg)</label>
+                        <input 
+                          type="number" 
+                          value={editTargetData.husbandFinal}
+                          onChange={(e) => setEditTargetData({ ...editTargetData, husbandFinal: e.target.value })}
+                          className="w-full p-2 text-xs border rounded-xl"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100 space-y-2">
-                <span className="text-xs font-bold text-blue-700 block">SUAMI 🧢</span>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium">Sasaran 1 (kg)</label>
-                    <input 
-                      type="number" 
-                      value={editTargetData.husbandFirst}
-                      onChange={(e) => setEditTargetData({ ...editTargetData, husbandFirst: e.target.value })}
-                      className="w-full p-2 text-xs border rounded-xl"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-slate-500 font-medium">Target Akhir 90 Hari (kg)</label>
-                    <input 
-                      type="number" 
-                      value={editTargetData.husbandFinal}
-                      onChange={(e) => setEditTargetData({ ...editTargetData, husbandFinal: e.target.value })}
-                      className="w-full p-2 text-xs border rounded-xl"
-                    />
-                  </div>
+                <div className="flex justify-end space-x-2 pt-2">
+                  <button
+                    onClick={() => setShowEditTargetModal(false)}
+                    className="px-4 py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-200"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleSaveTargets}
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-500 text-white font-bold text-xs rounded-xl hover:opacity-95"
+                  >
+                    Simpan Sasaran
+                  </button>
                 </div>
               </div>
             </div>
+          )}
 
-            <div className="flex justify-end space-x-2 pt-2">
-              <button
-                onClick={() => setShowEditTargetModal(false)}
-                className="px-4 py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-200"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleSaveTargets}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-pink-500 text-white font-bold text-xs rounded-xl hover:opacity-95"
-              >
-                Simpan Sasaran
-              </button>
+          {/* RESET CONFIRMATION MODAL */}
+          {showResetModal && (
+            <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-slate-200 text-center space-y-4">
+                <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+                  <RefreshCw className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Adakah anda pasti?</h3>
+                  <p className="text-xs text-slate-500 mt-1">Semua rekod berat, checklist, mata dan refleksi akan dipadamkan sepenuhnya.</p>
+                </div>
+                <div className="flex space-x-2 pt-2">
+                  <button
+                    onClick={() => setShowResetModal(false)}
+                    className="w-1/2 py-2.5 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-200"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleResetAllData}
+                    className="w-1/2 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700"
+                  >
+                    Ya, Reset All
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
         </div>
-      )}
+      );
+    }
 
-      {/* ==================== RESET CONFIRMATION MODAL ==================== */}
-      {showResetModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-xl border border-slate-200 text-center space-y-4">
-            <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
-              <RefreshCw className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-800">Adakah anda pasti?</h3>
-              <p className="text-xs text-slate-500 mt-1">Semua rekod berat, checklist, mata dan refleksi akan dipadamkan sepenuhnya.</p>
-            </div>
-            <div className="flex space-x-2 pt-2">
-              <button
-                onClick={() => setShowResetModal(false)}
-                className="w-1/2 py-2.5 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-200"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleResetAllData}
-                className="w-1/2 py-2.5 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700"
-              >
-                Ya, Reset All
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
