@@ -1,0 +1,128 @@
+// Key Penyimpanan Tempatan (localStorage)
+const STORAGE_KEY = "couple_challenge_progress_v1";
+
+// Rujukan Elemen DOM
+const checkboxes = document.querySelectorAll(".step-checkbox");
+const steps = document.querySelectorAll(".checklist-step");
+const scoreIsteriEl = document.getElementById("score-isteri");
+const scoreSuamiEl = document.getElementById("score-suami");
+const resetButton = document.getElementById("reset-checklist");
+
+// 1. Inisialisasi Graf Penurunan Berat Badan (Chart.js)
+const ctx = document.getElementById('weightChart').getContext('2d');
+const weightChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: ['M0 (Permulaan)', 'M2', 'M4', 'M6', 'M8', 'M10', 'M12 (Sasaran)'],
+    datasets: [
+      {
+        label: 'Isteri (kg)',
+        data: [115.0, 114.0, 113.0, 111.8, 110.5, 109.8, 109.0],
+        borderColor: '#87986A',
+        backgroundColor: 'rgba(135, 152, 106, 0.1)',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true
+      },
+      {
+        label: 'Suami (kg)',
+        data: [80.0, 79.3, 78.5, 77.8, 77.0, 76.4, 76.0],
+        borderColor: '#D4A373',
+        backgroundColor: 'rgba(212, 163, 115, 0.1)',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { position: 'bottom' }
+    },
+    scales: {
+      y: {
+        title: { display: true, text: 'Berat (kg)' }
+      }
+    }
+  }
+});
+
+// 2. Kemaskini Keadaan Visual & Pengiraan Mata
+function updateStepState(checkbox) {
+  const step = checkbox.closest(".checklist-step");
+  if (!step) return;
+  step.classList.toggle("step-completed", checkbox.checked);
+}
+
+function calculateScores() {
+  let totalPoints = 0;
+  checkboxes.forEach((cb) => {
+    if (cb.checked) {
+      totalPoints += parseInt(cb.dataset.points || "10", 10);
+    }
+  });
+
+  // Untuk simulasi cabaran bersama, mata dikongsi/dikemaskini
+  scoreIsteriEl.textContent = `${totalPoints} Mata`;
+  scoreSuamiEl.textContent = `${totalPoints} Mata`;
+}
+
+// 3. Menyimpan Kemajuan ke LocalStorage
+function saveProgress() {
+  const completedSteps = [];
+  steps.forEach((step) => {
+    const checkbox = step.querySelector(".step-checkbox");
+    if (checkbox && checkbox.checked) {
+      completedSteps.push(step.dataset.stepId);
+    }
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(completedSteps));
+}
+
+// 4. Memuatkan Kemajuan dari LocalStorage semasa Halaman Dibuka
+function loadProgress() {
+  const savedData = localStorage.getItem(STORAGE_KEY);
+  if (!savedData) return;
+
+  try {
+    const completedSteps = JSON.parse(savedData);
+    if (!Array.isArray(completedSteps)) return;
+
+    steps.forEach((step) => {
+      const stepId = step.dataset.stepId;
+      const checkbox = step.querySelector(".step-checkbox");
+      if (completedSteps.includes(stepId) && checkbox) {
+        checkbox.checked = true;
+        step.classList.add("step-completed");
+      }
+    });
+
+    calculateScores();
+  } catch (error) {
+    console.warn("Gagal memuatkan data dari simpanan tempatan.", error);
+  }
+}
+
+// 5. Acara Pendengar (Event Listeners)
+checkboxes.forEach((checkbox) => {
+  checkbox.addEventListener("change", () => {
+    updateStepState(checkbox);
+    calculateScores();
+    saveProgress();
+  });
+});
+
+resetButton.addEventListener("click", () => {
+  localStorage.removeItem(STORAGE_KEY);
+  checkboxes.forEach((checkbox) => {
+    checkbox.checked = false;
+  });
+  steps.forEach((step) => {
+    step.classList.remove("step-completed");
+  });
+  calculateScores();
+});
+
+// Jalankan semasa aplikasi mula dimuatkan
+loadProgress()
